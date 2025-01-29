@@ -144,10 +144,12 @@ def __convert_type_to_schema(
         }, is_required
 
     # Handle TypedDict and dataclasses
-    if isinstance(type, field_type) and (
-        issubclass(field_type, Dict) or is_dataclass(field_type)
-    ):
-        return to_json_schema(field_type), is_required
+    try:
+        if issubclass(field_type, Dict) or is_dataclass(field_type):
+            return to_json_schema(field_type), is_required
+    except TypeError:
+        # Throws an error in case of a type that is not a class
+        pass
 
     # Handle other types
     match = primitives.get(field_type)
