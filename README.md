@@ -2,7 +2,7 @@
     <h1 align="center">EYConf</h1>
 </p>
 <p align="center">
-    <em>Easy yaml based configuration for Python</em>
+    <em><b>E</b>asy <b>Y</B>aml based <b>Conf</b>iguration for Python</em>
 </p>
 
 
@@ -22,23 +22,23 @@
 ## Features
 
 <!-- start features -->
-- **Generate**: Automatically convert your schema to a yaml configuration file, including comments!
-- **Validate**: Validate your a given configuration file against your schema and raise human readable errors!
+- **Generate**: Automatically convert a schema to a yaml configuration file, including comments!
+- **Validate**: Validate a given configuration file against your schema and raise human readable errors!
 - **Extend**: Introduce custom logic by extending the `EYConf` class!
 - **Reload**: Reload your configuration on the fly without restarting your application!
 <!-- end features -->
 
 ## Installation
 
-You can install EYConf from git directly using pip:
+You can install EYConf from [PyPI](https://pypi.org/project/eyconf/) using pip.
 
 ```bash
-pip install git+https://github.com/semohr/eyconf.git
+pip install eyconf
 ```
 
 ## Quickstart
 
-Define a configuration schema
+First of define a configuration schema using dataclasses.
 
 ```python
 
