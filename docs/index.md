@@ -2,7 +2,7 @@
 hide-toc: true
 ---
 
-# Py2Ts
+# EYConf
 
 EyConf is a Python package that allows you to quickly create yaml based configuration files for your Python projects.
 

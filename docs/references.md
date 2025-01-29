@@ -7,4 +7,8 @@
     :recursive:
     :template: module.rst
 
+    eyconf.config
+    eyconf.generate_yaml
+    eyconf.validation
+
 ```

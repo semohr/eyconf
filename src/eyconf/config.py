@@ -1,3 +1,5 @@
+"""Configuration class for easy configuration management."""
+
 from __future__ import annotations
 
 import logging
@@ -9,7 +11,7 @@ from typing import TYPE_CHECKING, Generic, TypeVar, cast
 import yaml
 
 from .generate_yaml import dataclass_to_yaml
-from .validate import to_json_schema, validate
+from .validation import to_json_schema, validate
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -43,7 +45,6 @@ class EYConf(Generic[D]):
         schema: type[D],
         path: str | Path,
     ):
-
         if isinstance(path, str):
             path = Path(path)
         self.path = path

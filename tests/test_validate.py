@@ -11,7 +11,7 @@ from typing import (
     get_type_hints,
 )
 import pytest
-from eyconf.validate import to_json_schema
+from eyconf.validation import to_json_schema
 from dataclasses import dataclass
 
 

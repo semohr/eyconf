@@ -1,3 +1,5 @@
+"""Validating configuration data against schemas."""
+
 from __future__ import annotations
 
 import logging
@@ -19,7 +21,7 @@ __all__ = [
 
 
 def validate(data: dict, schema: dict) -> None:
-    """Validate the provided data against the given JSON schema.
+    """Validate the provided data against the given schema.
 
     This function uses the Draft202012Validator to check if the data
     conforms to the specified schema. If there are any validation errors,
@@ -27,12 +29,14 @@ def validate(data: dict, schema: dict) -> None:
 
     Parameters
     ----------
-    - data (dict): The data to be validated.
-    - schema (dict): The JSON schema to validate against.
+    data (dict):
+        The data to be validated.
+    schema (dict):
+        The JSON schema to validate against.
 
     Raises
     ------
-    - ConfigurationError: If the data does not comply with the schema,
+    ConfigurationError: If the data does not comply with the schema,
                           this error is raised with details of the violations.
     """
     schema = allow_none_in_schema(schema)
