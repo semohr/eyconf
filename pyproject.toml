@@ -1,0 +1,71 @@
+[project]
+name = "eyconf"
+version = "0.0.1"
+authors = [{ name = "Sebastian B. Mohr", email = "sebastian@mohrenclan.de" }]
+description = "Easy yaml based configuration for Python"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    # Maturety of the project
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    # Specify the Python versions we support.
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    # Specify the license
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+]
+dependencies = ["typing-extensions", "pyyaml", "jsonschema"]
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov>=5.0.0", "ruff>=0.8.6", "pre-commit"]
+docs = [
+    "sphinx>=8.0.2",
+    "furo>=2024.8.6",
+    "sphinx-copybutton>=0.5.2",
+    "sphinx-inline-tabs>=2023.4.21",
+    "sphinxcontrib-typer[html]>=0.5.0",
+    "myst-parser>=4.0.0",
+    "myst-nb>=1.1.2",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/eyconf"]
+
+
+[tool.ruff]
+include = ["pyproject.toml", "src/**/*.py", "tests/**/*.py"]
+
+[tool.ruff.lint]
+select = ["I", "D", "F"]
+ignore = ["D104", "D100"]
+fixable = ["ALL"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["D", "I", "S", "W"]
+"**__main__.py" = ["D103"]
+"**.ipynb" = ["D", "I", "S", "W"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.pytest.ini_options]
+addopts = ["--import-mode=importlib", "--cov=."]
+filterwarnings = ["error", "ignore::DeprecationWarning"]
+pythonpath = ["."]
+log_level = "DEBUG"
+
+
+[tool.coverage.report]
+omit = ["*/tests/*"]
+exclude_also = ["raise NotImplementedError", "@(abc\\.)?abstractmethod"]
