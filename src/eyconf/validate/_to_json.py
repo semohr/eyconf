@@ -144,7 +144,9 @@ def __convert_type_to_schema(
         }, is_required
 
     # Handle TypedDict and dataclasses
-    if issubclass(field_type, Dict) or is_dataclass(field_type):
+    if isinstance(type, field_type) and (
+        issubclass(field_type, Dict) or is_dataclass(field_type)
+    ):
         return to_json_schema(field_type), is_required
 
     # Handle other types
@@ -163,7 +165,6 @@ def __convert_type_to_schema(
 
 
 def __infer_type_from_values(values: tuple | list):
-
     # Create set of types
     types = {type(value) for value in values}
     if len(types) > 1:

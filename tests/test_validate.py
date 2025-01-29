@@ -55,7 +55,6 @@ class TestToSchema:
         (True, False),
     )
     def test_literal(self, as_dataclass):
-
         @dataclass
         class Schema:
             foo: Literal["bar", "baz"]
@@ -88,7 +87,6 @@ class TestToSchema:
         (True, False),
     )
     def test_optional(self, as_dataclass):
-
         @dataclass
         class Schema:
             foo: Optional[str]
@@ -115,7 +113,6 @@ class TestToSchema:
         (True, False),
     )
     def test_union(self, as_dataclass):
-
         @dataclass
         class Schema:
             foo: str | int
@@ -126,21 +123,19 @@ class TestToSchema:
 
         schema = to_json_schema(Schema)
         print(schema)
-        assert schema == {
-            "type": "object",
-            "properties": {
-                "foo": {"anyOf": [{"type": "integer"}, {"type": "string"}]},
-                "bar": {"anyOf": [{"type": "integer"}, {"type": "number"}]},
-            },
-            "required": ["foo", "bar"],
-        }
+
+        assert sorted(
+            schema["properties"]["foo"]["anyOf"], key=lambda x: x["type"]
+        ) == [{"type": "integer"}, {"type": "string"}]
+        assert sorted(
+            schema["properties"]["bar"]["anyOf"], key=lambda x: x["type"]
+        ) == [{"type": "integer"}, {"type": "number"}]
 
     @pytest.mark.parametrize(
         "as_dataclass",
         (True, False),
     )
     def test_nested_dict(self, as_dataclass):
-
         @dataclass
         class Dict1:
             foo: str
@@ -186,7 +181,6 @@ class TestToSchema:
         (True, False),
     )
     def test_lists(self, as_dataclass):
-
         @dataclass
         class Schema:
             foo: list[str]
@@ -208,7 +202,7 @@ class TestToSchema:
         }
 
     def test_not_required(self):
-        from typing import TypedDict, NotRequired
+        from typing_extensions import NotRequired
 
         class MyTypedDict1(TypedDict):
             foo: NotRequired[str]

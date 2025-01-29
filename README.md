@@ -8,7 +8,7 @@
 
 <p align="center">
     <a href="https://github.com/semohr/eyconf/actions">
-        <img alt="build status" src="https://img.shields.io/github/actions/workflow/status/semohr/eyconf/publish.yml?style=flat-square" />
+        <img alt="build status" src="https://img.shields.io/github/actions/workflow/status/semohr/eyconf/workflow.yml?style=flat-square" />
     </a>
     <a href="https://eyconf.readthedocs.io/en/latest/">
         <img alt="docs" src="https://img.shields.io/readthedocs/eyconf?style=flat-square" />
