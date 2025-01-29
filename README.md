@@ -7,13 +7,13 @@
 
 
 <p align="center">
-    <a href="https://github.com/semohr/py2ts/actions">
-        <img alt="build status" src="https://img.shields.io/github/actions/workflow/status/semohr/py2ts/workflow.yml?style=flat-square" />
+    <a href="https://github.com/semohr/eyconf/actions">
+        <img alt="build status" src="https://img.shields.io/github/actions/workflow/status/semohr/eyconf/workflow.yml?style=flat-square" />
     </a>
-    <a href="https://py2ts.readthedocs.io/en/latest/">
-        <img alt="docs" src="https://img.shields.io/readthedocs/py2ts?style=flat-square" />
+    <a href="https://eyconf.readthedocs.io/en/latest/">
+        <img alt="docs" src="https://img.shields.io/readthedocs/eyconf?style=flat-square" />
     </a>
-    <a href="https://github.com/semohr/py2ts/blob/main/LICENSE">
+    <a href="https://github.com/semohr/eyconf/blob/main/LICENSE">
         <img alt="License: GPL v3" src="https://img.shields.io/badge/License-GPL%20v3-blue.svg?style=flat-square" />
     </a>
 </p>
