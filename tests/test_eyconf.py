@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 import pytest
 from eyconf import EYConf
 
@@ -11,7 +12,6 @@ def tmp_config_path(tmp_path) -> Path:
 
 
 def test_invalid_schema(tmp_config_path):
-
     with pytest.raises(ValueError):
         EYConf(int, tmp_config_path)  # type: ignore
 
@@ -54,6 +54,26 @@ def test_load_existing(tmp_config_path):
         f.write("int_field: 30\nstr_field: Another value!\n")
     conf.refresh()
     assert conf.int_field == 30
+
+
+def test_load_nested(tmp_config_path):
+    from eyconf import EYConf
+
+    @dataclass
+    class Nested:
+        int_field: int = 42
+        str_field: str = "Hello, World!"
+
+    @dataclass
+    class Parent:
+        nested: Nested
+        optional_nested: Optional[Nested]
+        optional_with_default: Optional[int] = 42
+
+    conf = EYConf(Parent, tmp_config_path)
+    assert isinstance(conf._data.nested, Nested)
+    assert isinstance(conf._data.optional_nested, type(None))
+    assert conf.optional_with_default == 42
 
 
 def test_nested_getitem(tmp_config_path):

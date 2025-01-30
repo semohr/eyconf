@@ -6,7 +6,17 @@ import logging
 import os
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Generic, TypeVar, cast
+from types import NoneType, UnionType
+from typing import (
+    TYPE_CHECKING,
+    Generic,
+    TypeVar,
+    Union,
+    cast,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
 import yaml
 
@@ -137,11 +147,32 @@ class EYConf(Generic[D]):
     __repr__ = __str__  # Use the same formatted string for repr, if desired
 
 
-def dataclass_from_dict(klass, dikt):
-    try:
-        fieldtypes = klass.__annotations__
-        return klass(**{f: dataclass_from_dict(fieldtypes[f], dikt[f]) for f in dikt})
-    except AttributeError:
-        if isinstance(dikt, (tuple, list)):
-            return [dataclass_from_dict(klass.__args__[0], f) for f in dikt]
-        return dikt
+def dataclass_from_dict(in_type, data: dict):
+    # If type is a union try all args
+    origin = get_origin(in_type)
+    if origin is Union or origin is UnionType:
+        args = get_args(in_type)
+        includes_none = False
+        for arg in args:
+            if arg is NoneType or arg is None or arg is type(None):
+                includes_none = True
+
+        if data is None and includes_none:
+            return None
+        for arg in args:
+            try:
+                return dataclass_from_dict(arg, data)
+            except Exception as _e:
+                pass
+        raise ValueError(f"Could not parse data {data} with type {in_type}")
+
+    if isinstance(data, dict):
+        field_types = get_type_hints(in_type, include_extras=False)
+        return in_type(
+            **{f: dataclass_from_dict(field_types[f], data[f]) for f in data}
+        )
+
+    if isinstance(data, (tuple, list)):
+        return [dataclass_from_dict(in_type.__args__[0], f) for f in data]
+
+    return data
