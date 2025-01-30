@@ -120,3 +120,5 @@ transport:
 config.refresh()
 assert config.transport.host == "changed.example.com"
 ```
+
+For more information, please refer to the [documentation](https://eyconf.readthedocs.io/en/latest/).

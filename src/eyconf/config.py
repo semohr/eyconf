@@ -58,21 +58,28 @@ class EYConf(Generic[D]):
 
         # Generate default configuration if it does not exist
         if not self.path.exists():
-            self.write_default()
+            self._write_default()
 
         # Create schema
         self._json_schema = to_json_schema(self._schema)
 
         # Load the configuration file
         self._data = self._load()
-        print(self._data)
 
-    def write_default(self):
+    def default_yaml(self) -> str:
+        """Return the default yaml configuration as string.
+
+        You may overwrite this method to customize the default configuration
+        generation.
+        """
+        return dataclass_to_yaml(self._schema)
+
+    def _write_default(self):
         """Generate default yaml configuration."""
         if self.path.exists():
             log.warning(f"Configuration file {self.path} already exists. Overwriting!")
 
-        yaml_str = dataclass_to_yaml(self._schema)
+        yaml_str = self.default_yaml()
         os.makedirs(self.path.parent, exist_ok=True)
         with open(self.path, "w") as f:
             f.write(yaml_str)

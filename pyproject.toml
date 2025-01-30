@@ -1,8 +1,8 @@
 [project]
 name = "eyconf"
-version = "0.0.3"
+version = "0.0.4"
 authors = [{ name = "Sebastian B. Mohr", email = "sebastian@mohrenclan.de" }]
-description = "Easy yaml based configuration for Python"
+description = "Easy Yaml based Configuration for Python"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [

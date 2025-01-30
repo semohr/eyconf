@@ -99,7 +99,6 @@ class TestGenerateDefault:
         assert yaml.safe_load(yaml_str) == {"int_field": 42}
 
     def test_optional(self):
-
         @dataclass
         class Optionals:
             int_field: Optional[int]
@@ -116,7 +115,6 @@ class TestGenerateDefault:
         }
 
     def test_optional_with_default(self):
-
         @dataclass
         class OptionalsWithDefault:
             int_field: Optional[int] = 42
@@ -156,7 +154,6 @@ class TestGenerateDefault:
         }
 
     def test_deep_nested(self):
-
         @dataclass
         class Nested:
             int_field: int = 42
@@ -242,3 +239,19 @@ class TestGenerateDefault:
         print(yaml_str)
         assert yaml_str == "next: null"
         assert yaml.safe_load(yaml_str) == {"next": None}
+
+    def test_derived(self):
+        """Test a dataclass with derived fields."""
+
+        @dataclass
+        class Base:
+            enabled: bool = False
+
+        @dataclass
+        class Derived(Base):
+            name: str = "Test"
+
+        yaml_str = dataclass_to_yaml(Derived)
+        print(yaml_str)
+        assert yaml_str == "enabled: false\nname: Test"
+        assert yaml.safe_load(yaml_str) == {"enabled": False, "name": "Test"}

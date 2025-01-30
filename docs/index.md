@@ -23,6 +23,7 @@ maxdepth: 1
 
 quickstart
 contribution
+faq
 references
 ```
 
