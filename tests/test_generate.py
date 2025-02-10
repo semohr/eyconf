@@ -199,6 +199,16 @@ class TestGenerateDefault:
             "str_list": ["a", "b", "c"],
         }
 
+    def test_list_union(self):
+        @dataclass
+        class Lists:
+            int_list: list[int] | int = field(default_factory=lambda: [1, 2, 3])
+            str_list: list[str] | str = "test"
+
+        yaml_str = dataclass_to_yaml(Lists)
+        print(yaml_str)
+        assert yaml_str == "int_list:\n  - 1\n  - 2\n  - 3\nstr_list: test"
+
     def test_complex(self):
         """Test a more complex dataclass."""
 

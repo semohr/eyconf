@@ -248,12 +248,9 @@ def __field_to_lines(field: Field[Any], indent=0) -> list[Line]:
 
             return lines
 
-    # Primitives as mapping
-    if (
-        all([__is_primitive_type(arg) for arg in args])
-        or __is_primitive_type(field.type)
-        or is_optional
-    ):
+    # Might not type check but it is a good enough heuristic
+    # if default_value is set wrongly there are more issues anyways
+    if __is_primitive_instance(default_value) or is_optional:
         lines.append(
             MapLine(name=field.name, default_value=default_value, indent=indent)
         )
