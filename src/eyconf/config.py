@@ -122,16 +122,21 @@ class EYConf(Generic[D]):
         """Get an item from the configuration."""
         return getattr(self._data, key)
 
-    def __str__(self):
-        """Return a custom formatted string representation of the configuration data."""
-        data_dict = asdict(self._data)
+    def __repr__(self) -> str:
+        """Return a custom string representation of the configuration object."""
         class_name = type(self).__name__
         memory_address = hex(id(self))
         prefix = f"<{class_name} object at {memory_address} loaded from {self.path.absolute()}>:\n"
+
+        return f"{prefix}{self.__str__()}"
+
+    def __str__(self):
+        """Return a custom formatted string representation of the configuration data."""
+        data_dict = asdict(self._data)
         s = "\n".join(
             "  " + line for line in self._pretty_format(data_dict).splitlines()
         )
-        return f"{prefix}{s}"
+        return s
 
     def _pretty_format(self, data, indent=0):
         """Format the dict with pretty indentation."""
@@ -143,8 +148,6 @@ class EYConf(Generic[D]):
             else:
                 result.append(" " * indent + f"{key}: {value}")
         return "\n".join(result)
-
-    __repr__ = __str__  # Use the same formatted string for repr, if desired
 
 
 def dataclass_from_dict(in_type, data: dict):
