@@ -1,4 +1,14 @@
-## Quickstart
+# Quickstart
+
+## Installation
+
+You can install EYConf from [PyPI](https://pypi.org/project/eyconf/) using pip.
+
+```bash
+pip install eyconf
+```
+
+## Usage
 
 First of define a configuration schema using dataclasses.
 

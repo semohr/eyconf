@@ -51,8 +51,8 @@ myst_enable_extensions = [
 html_theme = "furo"
 html_static_path = ["_static"]
 html_theme_options = {
-    # "light_logo": "favicon-128x128-light.png",
-    # "dark_logo": "favicon-128x128-dark.png",
+    "light_logo": "logo_light.png",
+    "dark_logo": "logo_dark.png",
     "light_css_variables": {
         "color-brand-primary": "#2f3992",
         "color-brand-content": "#dee2e6",

@@ -36,6 +36,59 @@ You can install EYConf from [PyPI](https://pypi.org/project/eyconf/) using pip.
 pip install eyconf
 ```
 
-## Usage
+## Example Usage
 
-Please refer to the [documentation](https://eyconf.readthedocs.io/en/latest/).
+```python
+from dataclasses import dataclass
+from eyconf import EYConf
+
+@dataclass
+class Transport:
+    """Email transport configuration"""
+    host: str = 'imap.example.com'
+    port: int = 993
+    username: str = 'user'
+    password: str = 'password'
+    use_ssl: bool = False
+
+@dataclass
+class Other:
+    """Other configuration options"""
+    bar: int | None = None
+
+@dataclass
+class ConfigSchema:
+    """My configuration schema
+
+    Docstrings are used as comments in the generated yaml file!
+    """
+    transport: Transport
+    other: Other
+
+
+config = EYConf(ConfigSchema, 'config.yaml')
+```
+
+This generate the following `config.yaml` file in your current working directory:
+
+```yaml
+# My configuration schema
+# Docstrings are used as comments in the generated yaml file!
+
+transport:
+  # Email transport configuration
+
+  host: imap.example.com
+  port: 993
+  username: user
+  password: password
+  use_ssl: false
+
+other:
+  # Other configuration options
+
+  bar: null
+
+```
+
+Please refer to the [documentation](https://eyconf.readthedocs.io/en/latest/) for more information.

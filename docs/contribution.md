@@ -38,3 +38,17 @@ ruff check
 # Run the tests
 pytest
 ```
+
+## Docs
+
+To build the documentation, you need to have `sphinx` and `myst-parser` installed. You can install them using:
+
+```bash
+pip install -e .[docs]
+```
+
+To build the documentation, run:
+
+```bash
+make html
+```
