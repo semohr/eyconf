@@ -66,7 +66,7 @@ class ConfigSchema:
     other: Other
 
 
-config = EYConf(ConfigSchema, 'config.yaml')
+config = EYConf(ConfigSchema)
 ```
 
 This generate the following `config.yaml` file in your current working directory:

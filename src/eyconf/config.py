@@ -53,12 +53,8 @@ class EYConf(Generic[D]):
     def __init__(
         self,
         schema: type[D],
-        path: str | Path,
     ):
-        if isinstance(path, str):
-            path = Path(path)
-        self.path = path
-
+        self.path = self.get_file()
         # At the moment we only support dataclass classes
         if not is_dataclass(schema) or not isinstance(schema, type):
             raise ValueError(
@@ -148,6 +144,15 @@ class EYConf(Generic[D]):
             else:
                 result.append(" " * indent + f"{key}: {value}")
         return "\n".join(result)
+
+    @staticmethod
+    def get_file() -> Path:
+        """Get the path to the configuration file."""
+        return (
+            Path(os.environ.get("EYCONF_CONFIG_FILE", "./config.yaml"))
+            .expanduser()
+            .resolve()
+        )
 
 
 def dataclass_from_dict(in_type, data: dict):

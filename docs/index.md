@@ -22,6 +22,7 @@ maxdepth: 1
 ---
 
 quickstart
+cli
 contribution
 faq
 references

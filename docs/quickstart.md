@@ -48,7 +48,7 @@ more control it is also possible to extend the class.
 # Using create_config_class helper function
 from eyconf import EYConf
 
-config = EYConf(ConfigSchema,'config.yaml')
+config = EYConf(ConfigSchema)
 ```
 
 This created the `config.yaml` file in your current working directory with the following content. Notice that the
@@ -91,4 +91,25 @@ transport:
 ```python
 config.refresh()
 assert config.transport.host == "changed.example.com"
+```
+
+
+
+## Change Configuration File Path
+
+To change the path of the configuration file, you can set the `EYCONF_CONFIG_FILE` environment variable to the desired path before creating the `EYConf` instance.
+
+```bash
+export EYCONF_CONFIG_FILE="/path/to/your/config.yaml"
+```
+
+Alternatively, you can pass override the `get_file` method in a subclass of `EYConf`:
+
+```python
+from eyconf import EYConf
+class CustomConfig(EYConf):
+    @staticmethod
+    def get_file() -> Path:
+        return Path("/path/to/your/config.yaml").expanduser().resolve()
+config = CustomConfig(ConfigSchema)
 ```

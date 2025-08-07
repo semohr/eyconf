@@ -3,17 +3,19 @@ from pathlib import Path
 from typing import Optional
 import pytest
 from eyconf import EYConf
+import os
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def tmp_config_path(tmp_path) -> Path:
     config_file_path = tmp_path / "config.yml"
+    os.environ["EYCONF_CONFIG_FILE"] = str(config_file_path)
     return config_file_path
 
 
-def test_invalid_schema(tmp_config_path):
+def test_invalid_schema():
     with pytest.raises(ValueError):
-        EYConf(int, tmp_config_path)  # type: ignore
+        EYConf(int)  # type: ignore
 
 
 def test_write_default(tmp_config_path):
@@ -24,7 +26,7 @@ def test_write_default(tmp_config_path):
         int_field: int = 42
         str_field: str = "Hello, World!"
 
-    conf = EYConf(Config, tmp_config_path)
+    conf = EYConf(Config)
     assert conf._schema == Config
     assert conf.path == tmp_config_path
     assert conf.path.exists()
@@ -42,7 +44,7 @@ def test_load_existing(tmp_config_path):
     with open(tmp_config_path, "w") as f:
         f.write("int_field: 20\nstr_field: Another value!\n")
 
-    conf = EYConf(Config, tmp_config_path)
+    conf = EYConf(Config)
 
     assert conf.path == tmp_config_path
     assert conf.path.read_text() == "int_field: 20\nstr_field: Another value!\n"
@@ -56,7 +58,7 @@ def test_load_existing(tmp_config_path):
     assert conf.int_field == 30
 
 
-def test_load_nested(tmp_config_path):
+def test_load_nested():
     from eyconf import EYConf
 
     @dataclass
@@ -70,13 +72,13 @@ def test_load_nested(tmp_config_path):
         optional_nested: Optional[Nested]
         optional_with_default: Optional[int] = 42
 
-    conf = EYConf(Parent, tmp_config_path)
+    conf = EYConf(Parent)
     assert isinstance(conf._data.nested, Nested)
     assert isinstance(conf._data.optional_nested, type(None))
     assert conf.optional_with_default == 42
 
 
-def test_nested_getitem(tmp_config_path):
+def test_nested_getitem():
     from eyconf import EYConf
 
     @dataclass
@@ -89,6 +91,6 @@ def test_nested_getitem(tmp_config_path):
         nested: Nested
         other_field: str = "Hello, World!"
 
-    conf = EYConf(Parent, tmp_config_path)
+    conf = EYConf(Parent)
 
     assert type(conf.nested) == Nested

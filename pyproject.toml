@@ -1,6 +1,6 @@
 [project]
 name = "eyconf"
-version = "0.0.7"
+version = "0.1.0"
 authors = [{ name = "Sebastian B. Mohr", email = "sebastian@mohrenclan.de" }]
 description = "Easy Yaml based Configuration for Python"
 readme = "README.md"
@@ -29,7 +29,7 @@ build-backend = "hatchling.build"
 
 [project.optional-dependencies]
 test = ["pytest", "pytest-cov>=5.0.0"]
-dev = ["ruff>=0.8.6", "pre-commit", "eyconf[test]"]
+dev = ["ruff>=0.8.6", "pre-commit", "eyconf[test, cli]"]
 docs = [
     "sphinx>=8.0.2",
     "furo>=2024.8.6",
@@ -39,6 +39,7 @@ docs = [
     "myst-parser>=4.0.0",
     "myst-nb>=1.1.2",
 ]
+cli = ["typer"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/eyconf"]
