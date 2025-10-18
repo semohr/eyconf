@@ -201,6 +201,43 @@ class TestToSchema:
             ],
         }
 
+    @pytest.mark.parametrize(
+        "as_dataclass",
+        (True, False),
+    )
+    def test_nested_arbitrary_keys(self, as_dataclass):
+        @dataclass
+        class Inner:
+            inner: int
+
+        @dataclass
+        class Outer:
+            outer: Dict[str, Inner]
+
+        if not as_dataclass:
+            Outer = dataclass_to_typeddict(Outer) # type: ignore
+
+        schema = to_json_schema(Outer)
+
+        assert schema == {
+            "type": "object",
+            "properties": {
+                "outer": {
+                    "type": "object",
+                    "patternProperties": {
+                        ".*": {
+                            "type": "object",
+                            "properties": {
+                                "inner": {"type": "integer"},
+                            },
+                            "required": ["inner"],
+                        }
+                    },
+                },
+            },
+            "required": ["outer"],
+        }
+
     def test_not_required(self):
         from typing_extensions import NotRequired
 
