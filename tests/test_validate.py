@@ -72,15 +72,28 @@ class TestToSchema:
             "required": ["foo"],
         }
 
+    @pytest.mark.parametrize(
+        "as_dataclass",
+        (True, False),
+    )
+    def test_literal_with_different_types(self, as_dataclass):
         @dataclass
-        class InvalidLiteral:
-            foo: Literal[1, "foo"]
+        class Schema:
+            foo: Literal["a", "b", False]
 
         if not as_dataclass:
-            InvalidLiteral = dataclass_to_typeddict(InvalidLiteral)  # type: ignore
+            Schema = dataclass_to_typeddict(Schema)  # type: ignore
 
-        with pytest.raises(ValueError):
-            to_json_schema(InvalidLiteral)
+        schema = to_json_schema(Schema)
+        assert schema == {
+            "type": "object",
+            "properties": {
+                "foo": {"type": ["string", "boolean"], "enum": ["a", "b", False]},
+            },
+            "required": [
+                "foo",
+            ],
+        }
 
     @pytest.mark.parametrize(
         "as_dataclass",

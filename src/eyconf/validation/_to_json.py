@@ -180,9 +180,22 @@ def __convert_type_to_schema(
 
 
 def __infer_type_from_values(values: tuple | list):
-    # Create set of types
-    types = {type(value) for value in values}
-    if len(types) > 1:
-        raise ValueError("Literal values must all be of the same type")
 
-    return primitives[types.pop()]
+    types = []
+    for value in values:
+        value_type = type(value)
+        if value_type not in types:
+            types.append(value_type)
+
+    if len(types) == 1:
+        return primitives[types[0]]
+    else:
+        type_names = []
+        for t in types:
+            if t in primitives:
+                type_names.append(primitives[t])
+            elif t is type(None):
+                type_names.append("null")
+            else:
+                raise ValueError(f"Unsupported literal type: {t}")
+        return type_names
