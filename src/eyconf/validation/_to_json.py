@@ -28,7 +28,7 @@ primitives: dict[type[object], "str"] = {
 
 
 @lru_cache(maxsize=None)
-def to_json_schema(type: type, check_schema: bool = True) -> dict:
+def to_json_schema(type: type, check_schema: bool = True, allow_additional: bool = True) -> dict:
     """Convert a TypedDict or dataclass to a JSON schema.
 
     Parameters
@@ -37,6 +37,8 @@ def to_json_schema(type: type, check_schema: bool = True) -> dict:
         The TypedDict or dataclass to convert.
     check_schema : bool
         Whether to check the schema for validity.
+    allow_additional : bool
+        Whether to allow extra, unrecognized properties in the schema.
 
     Raises
     ------
@@ -49,6 +51,7 @@ def to_json_schema(type: type, check_schema: bool = True) -> dict:
         "type": "object",
         "properties": {},
         "required": [],
+        "additionalProperties": allow_additional,
     }
 
     # Get type hints for the TypedDict
@@ -56,7 +59,7 @@ def to_json_schema(type: type, check_schema: bool = True) -> dict:
 
     # Add the type hints to the schema
     for field_name, field_type in type_hints.items():
-        p, r = __convert_type_to_schema(field_type)
+        p, r = __convert_type_to_schema(field_type, allow_additional=allow_additional)
         schema["properties"][field_name] = p
 
         if r:
@@ -77,6 +80,7 @@ SchemaType = Union[
 
 def __convert_type_to_schema(
     field_type: type,
+    **kwargs,
 ) -> tuple[SchemaType, bool]:
     """
     Convert a type to a JSON schema.
@@ -85,6 +89,8 @@ def __convert_type_to_schema(
     ----------
     field_type : type
         The type to convert.
+    **kwargs : dict
+        Passed recusrively and to `to_json_schema()` if called in here.
 
     Returns
     -------
@@ -109,7 +115,7 @@ def __convert_type_to_schema(
     if origin is NotRequired:
         field_type = get_args(field_type)[0]
         is_required = False
-        return __convert_type_to_schema(field_type)[0], is_required
+        return __convert_type_to_schema(field_type, **kwargs)[0], is_required
 
     # Handler union
     if origin is Union or origin is UnionType:
@@ -127,12 +133,12 @@ def __convert_type_to_schema(
         if len(allowed_types) > 1:
             return {
                 "anyOf": [
-                    __convert_type_to_schema(allowed_type)[0]
+                    __convert_type_to_schema(allowed_type, **kwargs)[0]
                     for allowed_type in allowed_types
                 ]
             }, is_required
         elif len(allowed_types) == 1:
-            t, _ = __convert_type_to_schema(allowed_types.pop())
+            t, _ = __convert_type_to_schema(allowed_types.pop(), **kwargs)
             return t, is_required
         else:
             raise ValueError("Union type must have at least one type!")
@@ -141,13 +147,13 @@ def __convert_type_to_schema(
     if origin in [list, set, tuple, Sequence, ABCSequence]:
         return {
             "type": "array",
-            "items": __convert_type_to_schema(get_args(field_type)[0])[0],
+            "items": __convert_type_to_schema(get_args(field_type)[0], **kwargs)[0],
         }, is_required
 
     # Handle TypedDict and dataclasses
     try:
         if issubclass(field_type, Dict) or is_dataclass(field_type):
-            return to_json_schema(field_type), is_required
+            return to_json_schema(field_type, **kwargs), is_required
     except TypeError:
         # Throws an error in case of a type that is not a class
         pass
@@ -161,7 +167,7 @@ def __convert_type_to_schema(
         return {
             "type": "object",
             "patternProperties": {
-                ".*": __convert_type_to_schema(value_type)[0]
+                ".*": __convert_type_to_schema(value_type, **kwargs)[0]
             },
         }, is_required
 
