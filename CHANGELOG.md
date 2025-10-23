@@ -2,11 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.1.1]
+## [0.2.0] - 2025-10-23
 
 ### Added
 
 * Now supports patternProperties for nested types, where they key can be arbitrary but its content should still adhere to a specific type.
+* Added support for validating mixed type literals.
+* The `NoneType` type has been added to to literals and represents `null` values in YAML.
 
 ## [0.1.0] - 2025-08-07
 
