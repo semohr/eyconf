@@ -21,10 +21,10 @@ class TestToSchema:
     """
 
     @pytest.mark.parametrize(
-        "as_dataclass",
-        (True, False),
+        ["as_dataclass", "allow_additional"],
+        [(True, False), (True, False)],
     )
-    def test_primitives(self, as_dataclass):
+    def test_primitives(self, as_dataclass, allow_additional):
         """Test a simple dataclass."""
 
         @dataclass
@@ -38,7 +38,7 @@ class TestToSchema:
         if not as_dataclass:
             Primitives = dataclass_to_typeddict(Primitives)  # type: ignore
 
-        schema = to_json_schema(Primitives)
+        schema = to_json_schema(Primitives, allow_additional=allow_additional)
 
         assert schema == {
             "type": "object",
@@ -50,6 +50,7 @@ class TestToSchema:
                 "nay": {"type": "null"},
             },
             "required": ["foo", "bar", "baz", "qux", "nay"],
+            "additionalProperties": allow_additional,
         }
 
         @dataclass
@@ -63,10 +64,10 @@ class TestToSchema:
             to_json_schema(InvalidPrimitive)
 
     @pytest.mark.parametrize(
-        "as_dataclass",
-        (True, False),
+        ["as_dataclass", "allow_additional"],
+        [(True, False), (True, False)],
     )
-    def test_literal(self, as_dataclass):
+    def test_literal(self, as_dataclass, allow_additional):
         @dataclass
         class Schema:
             foo: Literal["bar", "baz"]
@@ -75,7 +76,7 @@ class TestToSchema:
         if not as_dataclass:
             Schema = dataclass_to_typeddict(Schema)  # type: ignore
 
-        schema = to_json_schema(Schema)
+        schema = to_json_schema(Schema, allow_additional=allow_additional)
 
         assert schema == {
             "type": "object",
@@ -84,12 +85,12 @@ class TestToSchema:
                 "bar": {"type": "null", "enum": [None]},
             },
             "required": ["foo", "bar"],
+            "additionalProperties": allow_additional,
         }
-
 
         @dataclass
         class InvalidLiteral:
-            foo: Literal[b'0']
+            foo: Literal[b"0"]
 
         if not as_dataclass:
             InvalidLiteral = dataclass_to_typeddict(InvalidLiteral)  # type: ignore
@@ -98,19 +99,19 @@ class TestToSchema:
             to_json_schema(InvalidLiteral)
 
     @pytest.mark.parametrize(
-        "as_dataclass",
-        (True, False),
+        ["as_dataclass", "allow_additional"],
+        [(True, False), (True, False)],
     )
-    def test_literal_with_different_types(self, as_dataclass):
+    def test_literal_with_different_types(self, as_dataclass, allow_additional):
         @dataclass
         class Schema:
             foo: Literal["a", "b", False]
             bar: Literal[1, None]
 
         if not as_dataclass:
-            Schema = dataclass_to_typeddict(Schema)  # type: ignore
+            Schema = dataclass_to_typeddict(Schema, allow_additional=allow_additional)  # type: ignore
 
-        schema = to_json_schema(Schema)
+        schema = to_json_schema(Schema, allow_additional=allow_additional)
         assert schema == {
             "type": "object",
             "properties": {
@@ -118,13 +119,14 @@ class TestToSchema:
                 "bar": {"type": ["integer", "null"], "enum": [1, None]},
             },
             "required": ["foo", "bar"],
+            "additionalProperties": allow_additional,
         }
 
     @pytest.mark.parametrize(
-        "as_dataclass",
-        (True, False),
+        ["as_dataclass", "allow_additional"],
+        [(True, False), (True, False)],
     )
-    def test_optional(self, as_dataclass):
+    def test_optional(self, as_dataclass, allow_additional):
         @dataclass
         class Schema:
             foo: Optional[str]
@@ -132,9 +134,9 @@ class TestToSchema:
             baz: float
 
         if not as_dataclass:
-            Schema = dataclass_to_typeddict(Schema)  # type: ignore
+            Schema = dataclass_to_typeddict(Schema, allow_additional=allow_additional)  # type: ignore
 
-        schema = to_json_schema(Schema)
+        schema = to_json_schema(Schema, allow_additional=allow_additional)
         print(schema)
         assert schema == {
             "type": "object",
@@ -144,23 +146,23 @@ class TestToSchema:
                 "baz": {"type": "number"},
             },
             "required": ["baz"],
+            "additionalProperties": allow_additional,
         }
 
     @pytest.mark.parametrize(
-        "as_dataclass",
-        (True, False),
+        ["as_dataclass", "allow_additional"],
+        [(True, False), (True, False)],
     )
-    def test_union(self, as_dataclass):
+    def test_union(self, as_dataclass, allow_additional):
         @dataclass
         class Schema:
             foo: str | int
             bar: int | float
 
         if not as_dataclass:
-            Schema = dataclass_to_typeddict(Schema)  # type: ignore
+            Schema = dataclass_to_typeddict(Schema, allow_additional=allow_additional)  # type: ignore
 
-        schema = to_json_schema(Schema)
-        print(schema)
+        schema = to_json_schema(Schema, allow_additional=allow_additional)
 
         assert sorted(
             schema["properties"]["foo"]["anyOf"], key=lambda x: x["type"]
@@ -170,10 +172,10 @@ class TestToSchema:
         ) == [{"type": "integer"}, {"type": "number"}]
 
     @pytest.mark.parametrize(
-        "as_dataclass",
-        (True, False),
+        ["as_dataclass", "allow_additional"],
+        [(True, False), (True, False)],
     )
-    def test_nested_dict(self, as_dataclass):
+    def test_nested_dict(self, as_dataclass, allow_additional):
         @dataclass
         class Dict1:
             foo: str
@@ -191,7 +193,7 @@ class TestToSchema:
         if not as_dataclass:
             NestedTyped = dataclass_to_typeddict(NestedTyped)  # type: ignore
 
-        schema = to_json_schema(NestedTyped)
+        schema = to_json_schema(NestedTyped, allow_additional=allow_additional)
         pprint(schema)
         assert schema["type"] == "object"
         assert schema["required"] == ["dict1", "dict_uni"]
@@ -203,6 +205,7 @@ class TestToSchema:
             "type": "object",
             "properties": {"foo": {"type": "string"}},
             "required": ["foo"],
+            "additionalProperties": allow_additional,
         }
 
         assert schema["properties"]["dict1"] == dict1_obj
@@ -215,10 +218,10 @@ class TestToSchema:
         )
 
     @pytest.mark.parametrize(
-        "as_dataclass",
-        (True, False),
+        ["as_dataclass", "allow_additional"],
+        [(True, False), (True, False)],
     )
-    def test_lists(self, as_dataclass):
+    def test_lists(self, as_dataclass, allow_additional):
         @dataclass
         class Schema:
             foo: list[str]
@@ -227,7 +230,7 @@ class TestToSchema:
         if not as_dataclass:
             Schema = dataclass_to_typeddict(Schema)  # type: ignore
 
-        schema = to_json_schema(Schema)
+        schema = to_json_schema(Schema, allow_additional=allow_additional)
         assert schema == {
             "type": "object",
             "properties": {
@@ -237,13 +240,14 @@ class TestToSchema:
             "required": [
                 "foo",
             ],
+            "additionalProperties": allow_additional,
         }
 
     @pytest.mark.parametrize(
-        "as_dataclass",
-        (True, False),
+        ["as_dataclass", "allow_additional"],
+        [(True, False), (True, False)],
     )
-    def test_nested_arbitrary_keys(self, as_dataclass):
+    def test_nested_arbitrary_keys(self, as_dataclass, allow_additional):
         @dataclass
         class Inner:
             inner: int
@@ -253,9 +257,9 @@ class TestToSchema:
             outer: Dict[str, Inner]
 
         if not as_dataclass:
-            Outer = dataclass_to_typeddict(Outer) # type: ignore
+            Outer = dataclass_to_typeddict(Outer)  # type: ignore
 
-        schema = to_json_schema(Outer)
+        schema = to_json_schema(Outer, allow_additional=allow_additional)
 
         assert schema == {
             "type": "object",
@@ -269,11 +273,13 @@ class TestToSchema:
                                 "inner": {"type": "integer"},
                             },
                             "required": ["inner"],
+                            "additionalProperties": allow_additional,
                         }
                     },
                 },
             },
             "required": ["outer"],
+            "additionalProperties": allow_additional,
         }
 
     def test_not_required(self):
@@ -298,6 +304,7 @@ class TestToSchema:
                 "nay": {"type": "null"},
             },
             "required": [],
+            "additionalProperties": True,
         }
 
     def test_special(self):
@@ -312,6 +319,7 @@ class TestToSchema:
                 "foo": {"type": "null"},
             },
             "required": ["foo"],
+            "additionalProperties": True,
         }
 
         @dataclass
@@ -325,6 +333,7 @@ class TestToSchema:
                 "foo": {},
             },
             "required": ["foo"],
+            "additionalProperties": True,
         }
 
         @dataclass
@@ -338,6 +347,7 @@ class TestToSchema:
                 "foo": {"type": "null"},
             },
             "required": ["foo"],
+            "additionalProperties": True,
         }
 
     def test_cache_hit(self):
