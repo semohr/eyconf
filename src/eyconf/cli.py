@@ -30,7 +30,7 @@ def create_config_cli(
     Parameter
     ---------
     config : type[EYConf]
-        The EYConf class to manage the configuration for.
+        The EYConf class to manage the configuration for. Not the instance!
     *args, **kwargs
         Additional arguments and keyword arguments to pass to the
         Config class if it needs to be instantiated.
@@ -74,6 +74,7 @@ def create_config_cli(
         typer.echo(str(config))
 
     return config_cli
+
 
 
 async def edit_config(Config: type[EYConf], *args, **kwargs):

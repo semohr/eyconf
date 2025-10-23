@@ -18,10 +18,21 @@ class ConfigSchema:
 class MyConfing(EYConf):
     def __init__(self, config_file):
         super().__init__(ConfigSchema, config_file)
-        
+
     def default_yaml(self):
         return """
         My configuration schema
         foo: 42
         """
 ```
+
+
+(faq:why-can-i-not-just-provide-a-path-to-the-constructor)=
+## Why can I not just provide a path to the constructor?
+
+
+This is a design choice: To enable our cli to find your configuration (which comes with great benefits), the path needs to be attached to a class — being attached to an instance is not sufficient.
+This prevents a simpler pattern like `EYConf(ConfigSchema, path="/path/to/config.yaml")`.
+
+We also do not want to create multiple ways to do the same thing.
+Having both a path parameter and a way to override `get_file` would add unnecessary complexity to the class interface.

@@ -8,7 +8,7 @@ You can install EYConf from [PyPI](https://pypi.org/project/eyconf/) using pip.
 pip install eyconf
 ```
 
-## Usage
+## Using as a Configuration Manager
 
 First of define a configuration schema using dataclasses.
 
@@ -94,8 +94,7 @@ assert config.transport.host == "changed.example.com"
 ```
 
 
-
-## Change Configuration File Path
+### Change Configuration File Path
 
 To change the path of the configuration file, you can set the `EYCONF_CONFIG_FILE` environment variable to the desired path before creating the `EYConf` instance.
 
@@ -112,4 +111,67 @@ class CustomConfig(EYConf):
     def get_file() -> Path:
         return Path("/path/to/your/config.yaml").expanduser().resolve()
 config = CustomConfig(ConfigSchema)
+```
+
+{ref}`Why can I not just provide a path to the constructor? <faq:why-can-i-not-just-provide-a-path-to-the-constructor>`
+
+
+
+## Using as validation layer
+
+If you already have a configuration as dictionary (e.g. loaded from a another source or you dont want to create a yaml file) you can use the `validate_config` function to validate and parse the configuration according to a defined schema.
+
+```python
+from dataclasses import dataclass
+from typing import Optional
+
+from eyconf import validation
+
+@dataclass
+class Transport:
+    """Email transport configuration"""
+    host: str = 'imap.example.com'
+    port: int = 993
+    username: str = 'user'
+    password: str = 'password'
+    use_ssl: bool = False
+
+@dataclass
+class ConfigSchema:
+    """My configuration schema
+
+    Docstrings are used as comments in the generated yaml file!
+    """
+    transport: Transport
+
+config = {
+    "transport": {
+        "host": "custom.example.com",
+        "port": 993,
+        "username": "custom_user",
+        "password": "custom_password",
+        "use_ssl_s": True,
+    },
+}
+
+validation.validate(
+    config, validation.to_json_schema(ConfigSchema, allow_additional=False)
+)
+# Raises
+# MultiConfigurationError:
+# 'use_ssl' is a required property in section 'transport'
+# Additional properties are not allowed ('use_ssl_s' was unexpected) in section 'transport'
+```
+
+### Create default configuration as python dict
+
+```python
+from dataclasses import asdict
+
+config = asdict(ConfigSchema())
+
+validation.validate(
+    config, validation.to_json_schema(ConfigSchema, allow_additional=False)
+)
+# Pass
 ```

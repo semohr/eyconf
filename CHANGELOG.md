@@ -13,6 +13,10 @@ All notable changes to this project will be documented in this file.
 
 * Moved `Primitives` and `primitive_types` to `eyconf.constants` for better modularity.
 
+### Added
+
+* More examples in the quickstart guide.
+
 
 ## [0.2.0] - 2025-10-23
 
