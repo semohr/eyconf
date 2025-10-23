@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 * Using `from __future__ import annotations` caused issues with dataclass field type resolution. This has been fixed to ensure compatibility.
+* Generation of yaml for dictionary types with arbitrary keys and typed values now working.
 
 ### Changed
 

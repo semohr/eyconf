@@ -156,7 +156,7 @@ def __convert_type_to_schema(
         # Throws an error in case of a type that is not a class
         pass
 
-    # Handle arbitrary keys with typed values
+    # Handle Dicts - arbitrary keys with typed values
     if origin in [dict, Dict]:
         key_type, value_type = get_args(field_type)
         if key_type is not str:

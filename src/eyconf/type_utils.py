@@ -60,7 +60,6 @@ def _get_namespace(
         # Merge locals that might contain our dataclass definitions
         for name, value in frame_locals.items():
             if inspect.isclass(value):
-                print(f"{name=}, {value=}")
                 localns[name] = value
                 globalns[name] = value  # Also add to globals
 

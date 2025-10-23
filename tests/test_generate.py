@@ -1,10 +1,11 @@
 # In CI: We run this without `from __future__ import annotations` to ensure compatibility.
-from __future__ import annotations
+# from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Annotated, Optional, Union
+from typing import Annotated, Literal, Optional, Union
 
 import logging
+import pytest
 import yaml
 
 from eyconf.generate_yaml import dataclass_to_yaml
@@ -202,6 +203,35 @@ class TestGenerateDefault:
             "str_list": ["a", "b", "c"],
         }
 
+    def test_dict(self):
+        """Test a dict of dataclasses."""
+
+        @dataclass
+        class DictSchema:
+            empty: dict[str, str]
+            int_dict: dict[str, int] = field(
+                default_factory=lambda: {"one": 1, "two": 2, "three": 3}
+            )
+            str_dict: Optional[dict[str, str]] = None
+
+        yaml_str = dataclass_to_yaml(DictSchema)
+        print(yaml_str)
+        assert yaml_str == (
+            "empty: {}\nint_dict:\n  one: 1\n  two: 2\n  three: 3\nstr_dict: null"
+        )
+
+        with pytest.raises(
+            ValueError, match="Only string keys are supported in dict types"
+        ):
+
+            @dataclass
+            class InvalidDictSchema:
+                invalid_dict: dict[int, str] = field(
+                    default_factory=lambda: {1: "one", 2: "two"}
+                )
+
+            yaml_str = dataclass_to_yaml(InvalidDictSchema)
+
     def test_list_union(self):
         @dataclass
         class Lists:
@@ -268,3 +298,44 @@ class TestGenerateDefault:
         print(yaml_str)
         assert yaml_str == "enabled: false\nname: Test"
         assert yaml.safe_load(yaml_str) == {"enabled": False, "name": "Test"}
+
+    def test_advanced_deep_nested(self):
+        @dataclass
+        class InboxFolder:
+            name: str
+            path: str
+            auto_threshold: float | None = None
+            autotag: Literal["auto", "preview", "bootleg", False] = False
+            # the `no` -> False option will need tweaking
+
+        @dataclass
+        class LibrarySection:
+            readonly: bool = False
+            artist_separators: list[str] = field(
+                default_factory=lambda: [",", ";", "&"]
+            )
+
+        @dataclass
+        class TerminalSection:
+            start_path: str = "/repo"
+
+        @dataclass
+        class InboxSection:
+            ignore: list[str] | Literal["_use_beets_ignore"] = "_use_beets_ignore"
+            debounce_before_autotag: int = 30
+            folders: dict[str, InboxFolder] = field(default_factory=dict)
+
+        @dataclass
+        class BeetsFlaskSchema:
+            inbox: InboxSection = field(default_factory=lambda: InboxSection())
+            library: LibrarySection = field(default_factory=lambda: LibrarySection())
+            terminal: TerminalSection = field(default_factory=lambda: TerminalSection())
+            num_preview_workers: int = 4
+
+        @dataclass
+        class BeetsSchema:
+            gui: BeetsFlaskSchema
+
+        yaml_str = dataclass_to_yaml(BeetsSchema)
+        print(yaml_str)
+        assert True
