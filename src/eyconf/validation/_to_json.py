@@ -14,17 +14,11 @@ from typing import (
 )
 
 from jsonschema import Draft202012Validator
-from typing_extensions import Final, NotRequired
+from typing_extensions import NotRequired
 
-__all__ = ["to_json_schema", "primitives"]
+from eyconf.constants import primitive_type_mapping
 
-primitives: Final[dict[type[object], "str"]] = {
-    str: "string",
-    int: "integer",
-    float: "number",
-    bool: "boolean",
-    NoneType: "null",
-}
+__all__ = ["to_json_schema"]
 
 
 @lru_cache(maxsize=None)
@@ -176,7 +170,7 @@ def __convert_type_to_schema(
         }, is_required
 
     # Handle other types
-    match = primitives.get(field_type)
+    match = primitive_type_mapping.get(field_type)
 
     if match:
         return {"type": match}, is_required
@@ -196,8 +190,8 @@ def __infer_type_from_values(values: tuple | list):
 
     type_names: list[str] = []
     for t in types:
-        if t in primitives:
-            type_names.append(primitives[t])
+        if t in primitive_type_mapping:
+            type_names.append(primitive_type_mapping[t])
         else:
             raise ValueError(f"Unsupported literal type: {t}")
     if len(type_names) == 1:

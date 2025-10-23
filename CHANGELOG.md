@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1]
+
+### Changed
+
+* Moved `Primitives` and `primitive_types` to `eyconf.constants` for better modularity.
+
+
 ## [0.2.0] - 2025-10-23
 
 ### Added
@@ -10,7 +17,7 @@ All notable changes to this project will be documented in this file.
 * Added support for validating mixed type literals.
 * Added functionality to disallow or allow additional properties in configuration schemas.
 
-## Changed
+### Changed
 
 * The `NoneType` type has been added to to literals and represents `null` values in YAML.
 

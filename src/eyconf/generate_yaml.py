@@ -20,6 +20,8 @@ from typing import (
     get_origin,
 )
 
+from eyconf.constants import Primitives, primitive_types
+
 log = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
@@ -300,9 +302,6 @@ def __is_custom_docstring(dataclass_obj):
     return re.match(default_docstring_pattern, dataclass_obj.__doc__) is None
 
 
-Primitives = Union[int, float, str, bool, type(None), NoneType]
-
-
 def __is_primitive_type(t: Any) -> bool:
     """Check if the field type is supported.
 
@@ -316,7 +315,7 @@ def __is_primitive_type(t: Any) -> bool:
     bool
         True if the field type is supported, False otherwise.
     """
-    if t in [int, float, str, bool, type(None), NoneType]:
+    if t in primitive_types:
         return True
     return False
 
@@ -334,7 +333,7 @@ def __is_primitive_instance(t: Any) -> bool:
     bool
         True if the field type is a primitive instance, False otherwise.
     """
-    if isinstance(t, (int, float, str, bool, type(None), NoneType)):
+    if isinstance(t, (*primitive_types,)):
         return True
     return False
 
