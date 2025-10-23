@@ -1,3 +1,6 @@
+# In CI: We run this without `from __future__ import annotations` to ensure compatibility.
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import Annotated, Optional, Union
 

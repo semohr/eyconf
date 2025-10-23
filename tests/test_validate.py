@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import fields
 from pprint import pprint
 from typing import (
@@ -8,9 +9,10 @@ from typing import (
     Sequence,
     TypedDict,
     Union,
-    get_type_hints,
 )
+from typing_extensions import NotRequired
 import pytest
+from eyconf.type_utils import get_type_hints_resolve_namespace
 from eyconf.validation import to_json_schema
 from dataclasses import dataclass
 
@@ -283,8 +285,6 @@ class TestToSchema:
         }
 
     def test_not_required(self):
-        from typing_extensions import NotRequired
-
         class MyTypedDict1(TypedDict):
             foo: NotRequired[str]
             bar: NotRequired[int]
@@ -365,7 +365,7 @@ class TestToSchema:
 def dataclass_to_typeddict(dc_cls: type):
     """Convert a dataclass to a TypedDict."""
     # Fetch type hints of the dataclass
-    type_hints = get_type_hints(dc_cls)
+    type_hints = get_type_hints_resolve_namespace(dc_cls)
 
     # Extract the fields and their types
     typeddict_fields: Dict = {

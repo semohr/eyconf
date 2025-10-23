@@ -21,6 +21,7 @@ from typing import (
 )
 
 from eyconf.constants import primitive_types
+from eyconf.type_utils import get_type_hints_resolve_namespace
 
 log = logging.getLogger(__name__)
 
@@ -160,21 +161,31 @@ def _dataclass_to_lines(
         return lines
 
     # Handle dataclass types
-    # by parsing type hints
+    # by parsing type hint
+    dataclass_types = get_type_hints_resolve_namespace(
+        schema,
+        include_extras=True,
+    )
     all_fields = fields(schema)
+
     for field in all_fields:
-        lines += __field_to_lines(field, indent=indent)
+        lines += __field_to_lines(field, dataclass_types[field.name], indent=indent)
 
     return lines
 
 
-def __field_to_lines(field: Field[Any], indent=0) -> list[Line]:
+def __field_to_lines(field: Field[Any], field_type: type, indent=0) -> list[Line]:
     """Parse a primitive field and return a list of lines.
 
     Parameters
     ----------
     field : Field
         The field to parse.
+    field_type : type
+        The type of the field. Parsed here additionally
+        to the included type in the field to support
+        `from __future__ import annotations`. This is basically
+        an overwrite of `field.type`.
 
     Returns
     -------
@@ -182,13 +193,13 @@ def __field_to_lines(field: Field[Any], indent=0) -> list[Line]:
         A list of lines, each no longer than `l` characters.
     """
     lines = []
-    origin = get_origin(field.type)
-    args = get_args(field.type)
+    origin = get_origin(field_type)
+    args = get_args(field_type)
 
-    if is_dataclass(field.type):
+    if is_dataclass(field_type):
         # Add section
         lines.append(SectionLine(field.name, indent=indent))
-        lines += _dataclass_to_lines(field.type, indent=indent + 1)
+        lines += _dataclass_to_lines(field_type, indent=indent + 1)
         lines.append(EmptyLine())
         return lines
 

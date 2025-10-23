@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [0.2.1]
 
+### Fixed
+
+* Using `from __future__ import annotations` caused issues with dataclass field type resolution. This has been fixed to ensure compatibility.
+
 ### Changed
 
 * Moved `Primitives` and `primitive_types` to `eyconf.constants` for better modularity.

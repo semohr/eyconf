@@ -10,13 +10,13 @@ from typing import (
     Union,
     get_args,
     get_origin,
-    get_type_hints,
 )
 
 from jsonschema import Draft202012Validator
 from typing_extensions import NotRequired
 
 from eyconf.constants import primitive_type_mapping
+from eyconf.type_utils import get_type_hints_resolve_namespace
 
 __all__ = ["to_json_schema"]
 
@@ -53,7 +53,7 @@ def to_json_schema(
     }
 
     # Get type hints for the TypedDict
-    type_hints = get_type_hints(type, include_extras=True)
+    type_hints = get_type_hints_resolve_namespace(type, include_extras=True)
 
     # Add the type hints to the schema
     for field_name, field_type in type_hints.items():
