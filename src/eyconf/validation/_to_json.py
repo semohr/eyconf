@@ -14,11 +14,11 @@ from typing import (
 )
 
 from jsonschema import Draft202012Validator
-from typing_extensions import NotRequired
+from typing_extensions import Final, NotRequired
 
 __all__ = ["to_json_schema", "primitives"]
 
-primitives: dict[type[object], "str"] = {
+primitives: Final[dict[type[object], "str"]] = {
     str: "string",
     int: "integer",
     float: "number",
@@ -28,7 +28,11 @@ primitives: dict[type[object], "str"] = {
 
 
 @lru_cache(maxsize=None)
-def to_json_schema(type: type, check_schema: bool = True, allow_additional: bool = True) -> dict:
+def to_json_schema(
+    type: type,
+    check_schema: bool = True,
+    allow_additional: bool = True,
+) -> dict:
     """Convert a TypedDict or dataclass to a JSON schema.
 
     Parameters
@@ -184,14 +188,13 @@ def __convert_type_to_schema(
 
 
 def __infer_type_from_values(values: tuple | list):
-
-    types : list[type] = []
+    types: list[type] = []
     for value in values:
         value_type = type(value)
         if value_type not in types:
             types.append(value_type)
 
-    type_names : list[str] = []
+    type_names: list[str] = []
     for t in types:
         if t in primitives:
             type_names.append(primitives[t])
