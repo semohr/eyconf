@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -82,15 +84,20 @@ def test_nested_getitem():
     from eyconf import EYConf
 
     @dataclass
-    class Nested:
+    class Nested2:
         int_field: int = 42
         str_field: str = "Hello, World!"
 
     @dataclass
-    class Parent:
-        nested: Nested
+    class Parent2:
+        nested: Nested2
         other_field: str = "Hello, World!"
 
-    conf = EYConf(Parent)
+    # This seems to be a bug in python!
+    # with `future annotations` the `types["nested"]` yields the first definition ...
+    # types = get_type_hints(Parent2)
+    # assert types["nested"] == Nested2
 
-    assert type(conf.nested) == Nested
+    conf = EYConf(Parent2)
+
+    assert type(conf.nested) == Nested2

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import fields
 from pprint import pprint
 from typing import (
@@ -8,9 +9,10 @@ from typing import (
     Sequence,
     TypedDict,
     Union,
-    get_type_hints,
 )
+from typing_extensions import NotRequired
 import pytest
+from eyconf.type_utils import get_type_hints_resolve_namespace
 from eyconf.validation import to_json_schema
 from dataclasses import dataclass
 
@@ -247,7 +249,41 @@ class TestToSchema:
         ["as_dataclass", "allow_additional"],
         [(True, False), (True, False)],
     )
-    def test_nested_arbitrary_keys(self, as_dataclass, allow_additional):
+    def test_dicts(self, as_dataclass, allow_additional):
+        @dataclass
+        class Schema:
+            foo: Dict[str, int]
+            bar: dict[str, str]
+
+        if not as_dataclass:
+            Schema = dataclass_to_typeddict(Schema)  # type: ignore
+
+        schema = to_json_schema(Schema, allow_additional=allow_additional)
+        assert schema == {
+            "type": "object",
+            "properties": {
+                "foo": {
+                    "type": "object",
+                    "patternProperties": {
+                        ".*": {"type": "integer"},
+                    },
+                },
+                "bar": {
+                    "type": "object",
+                    "patternProperties": {
+                        ".*": {"type": "string"},
+                    },
+                },
+            },
+            "required": ["foo", "bar"],
+            "additionalProperties": allow_additional,
+        }
+
+    @pytest.mark.parametrize(
+        ["as_dataclass", "allow_additional"],
+        [(True, False), (True, False)],
+    )
+    def test_dict_nested(self, as_dataclass, allow_additional):
         @dataclass
         class Inner:
             inner: int
@@ -283,8 +319,6 @@ class TestToSchema:
         }
 
     def test_not_required(self):
-        from typing_extensions import NotRequired
-
         class MyTypedDict1(TypedDict):
             foo: NotRequired[str]
             bar: NotRequired[int]
@@ -365,7 +399,7 @@ class TestToSchema:
 def dataclass_to_typeddict(dc_cls: type):
     """Convert a dataclass to a TypedDict."""
     # Fetch type hints of the dataclass
-    type_hints = get_type_hints(dc_cls)
+    type_hints = get_type_hints_resolve_namespace(dc_cls)
 
     # Extract the fields and their types
     typeddict_fields: Dict = {

@@ -15,10 +15,11 @@ from typing import (
     cast,
     get_args,
     get_origin,
-    get_type_hints,
 )
 
 import yaml
+
+from eyconf.type_utils import get_type_hints_resolve_namespace
 
 from .generate_yaml import dataclass_to_yaml
 from .validation import to_json_schema, validate
@@ -175,7 +176,7 @@ def dataclass_from_dict(in_type, data: dict):
         raise ValueError(f"Could not parse data {data} with type {in_type}")
 
     if isinstance(data, dict):
-        field_types = get_type_hints(in_type, include_extras=False)
+        field_types = get_type_hints_resolve_namespace(in_type, include_extras=False)
         return in_type(
             **{f: dataclass_from_dict(field_types[f], data[f]) for f in data}
         )

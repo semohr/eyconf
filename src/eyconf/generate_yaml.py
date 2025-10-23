@@ -15,12 +15,14 @@ from typing import (
     TYPE_CHECKING,
     Annotated,
     Any,
+    Dict,
     Union,
     get_args,
     get_origin,
 )
 
 from eyconf.constants import primitive_types
+from eyconf.type_utils import get_type_hints_resolve_namespace
 
 log = logging.getLogger(__name__)
 
@@ -160,21 +162,31 @@ def _dataclass_to_lines(
         return lines
 
     # Handle dataclass types
-    # by parsing type hints
+    # by parsing type hint
+    dataclass_types = get_type_hints_resolve_namespace(
+        schema,
+        include_extras=True,
+    )
     all_fields = fields(schema)
+
     for field in all_fields:
-        lines += __field_to_lines(field, indent=indent)
+        lines += __field_to_lines(field, dataclass_types[field.name], indent=indent)
 
     return lines
 
 
-def __field_to_lines(field: Field[Any], indent=0) -> list[Line]:
+def __field_to_lines(field: Field[Any], field_type: type, indent=0) -> list[Line]:
     """Parse a primitive field and return a list of lines.
 
     Parameters
     ----------
     field : Field
         The field to parse.
+    field_type : type
+        The type of the field. Parsed here additionally
+        to the included type in the field to support
+        `from __future__ import annotations`. This is basically
+        an overwrite of `field.type`.
 
     Returns
     -------
@@ -182,13 +194,13 @@ def __field_to_lines(field: Field[Any], indent=0) -> list[Line]:
         A list of lines, each no longer than `l` characters.
     """
     lines = []
-    origin = get_origin(field.type)
-    args = get_args(field.type)
+    origin = get_origin(field_type)
+    args = get_args(field_type)
 
-    if is_dataclass(field.type):
+    if is_dataclass(field_type):
         # Add section
         lines.append(SectionLine(field.name, indent=indent))
-        lines += _dataclass_to_lines(field.type, indent=indent + 1)
+        lines += _dataclass_to_lines(field_type, indent=indent + 1)
         lines.append(EmptyLine())
         return lines
 
@@ -207,7 +219,7 @@ def __field_to_lines(field: Field[Any], indent=0) -> list[Line]:
 
     # Parse default
     default_missing = True
-    default_value = None
+    default_value: Any = None
     if isinstance(field.default, _MISSING_TYPE):
         if isinstance(field.default_factory, _MISSING_TYPE):
             default_missing = True
@@ -218,13 +230,17 @@ def __field_to_lines(field: Field[Any], indent=0) -> list[Line]:
         default_value = field.default
         default_missing = False
 
+    if origin in [dict, Dict] and default_missing:
+        default_value = {}
+        default_missing = False
+
     # No default value only allowed if the field is optional
     if default_missing and not is_optional:
         raise ValueError(
             f"Field '{field.name}' has no default value! You may set one using direct assignment or a default factory."
         )
 
-    # Lists/Sequences
+    # Default value: Lists/Sequences
     if isinstance(default_value, list):
         if len(default_value) == 0:
             default_value = None
@@ -243,6 +259,42 @@ def __field_to_lines(field: Field[Any], indent=0) -> list[Line]:
 
                 if __is_dataclass_instance(value):
                     lines.append(SequenceLine("", indent=indent + 1))
+                    lines += _dataclass_to_lines(value, indent=indent + 2)
+                    continue
+
+                raise NotImplementedError(
+                    f"Field type {field.type} {args} {origin} is not supported."
+                )
+
+            return lines
+
+    # Default value: dicts
+    if isinstance(default_value, dict):
+        if len(default_value) == 0:
+            """
+            Stuff: {}
+            """
+            lines.append(MapLine(name=field.name, default_value=r"{}", indent=indent))
+            return lines
+        else:
+            """
+            Stuff:
+                key1: value1
+                key2: value2
+            """
+            lines.append(SectionLine(field.name, indent=indent))
+            for key, value in default_value.items():
+                if not isinstance(key, str):
+                    raise ValueError("Only string keys are supported in dict types")
+
+                if __is_primitive_instance(value):
+                    lines.append(
+                        MapLine(name=key, default_value=value, indent=indent + 1)
+                    )
+                    continue
+
+                if __is_dataclass_instance(value):
+                    lines.append(MapLine(name=key, default_value="", indent=indent + 1))
                     lines += _dataclass_to_lines(value, indent=indent + 2)
                     continue
 
