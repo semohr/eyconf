@@ -20,12 +20,14 @@ from typing import (
     get_origin,
 )
 
-from eyconf.constants import Primitives, primitive_types
+from eyconf.constants import primitive_types
 
 log = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
+
+    from eyconf.constants import Primitives
 
 
 class Line(ABC):
