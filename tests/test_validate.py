@@ -33,6 +33,7 @@ class TestToSchema:
             bar: int
             baz: float
             qux: bool
+            nay: None
 
         if not as_dataclass:
             Primitives = dataclass_to_typeddict(Primitives)  # type: ignore
@@ -46,9 +47,20 @@ class TestToSchema:
                 "bar": {"type": "integer"},
                 "baz": {"type": "number"},
                 "qux": {"type": "boolean"},
+                "nay": {"type": "null"},
             },
-            "required": ["foo", "bar", "baz", "qux"],
+            "required": ["foo", "bar", "baz", "qux", "nay"],
         }
+
+        @dataclass
+        class InvalidPrimitive:
+            foo: bytes
+
+        if not as_dataclass:
+            InvalidPrimitive = dataclass_to_typeddict(InvalidPrimitive)  # type: ignore
+
+        with pytest.raises(ValueError):
+            to_json_schema(InvalidPrimitive)
 
     @pytest.mark.parametrize(
         "as_dataclass",
@@ -58,6 +70,7 @@ class TestToSchema:
         @dataclass
         class Schema:
             foo: Literal["bar", "baz"]
+            bar: Literal[None]
 
         if not as_dataclass:
             Schema = dataclass_to_typeddict(Schema)  # type: ignore
@@ -68,19 +81,44 @@ class TestToSchema:
             "type": "object",
             "properties": {
                 "foo": {"type": "string", "enum": ["bar", "baz"]},
+                "bar": {"type": "null", "enum": [None]},
             },
-            "required": ["foo"],
+            "required": ["foo", "bar"],
         }
+
 
         @dataclass
         class InvalidLiteral:
-            foo: Literal[1, "foo"]
+            foo: Literal[b'0']
 
         if not as_dataclass:
             InvalidLiteral = dataclass_to_typeddict(InvalidLiteral)  # type: ignore
 
         with pytest.raises(ValueError):
             to_json_schema(InvalidLiteral)
+
+    @pytest.mark.parametrize(
+        "as_dataclass",
+        (True, False),
+    )
+    def test_literal_with_different_types(self, as_dataclass):
+        @dataclass
+        class Schema:
+            foo: Literal["a", "b", False]
+            bar: Literal[1, None]
+
+        if not as_dataclass:
+            Schema = dataclass_to_typeddict(Schema)  # type: ignore
+
+        schema = to_json_schema(Schema)
+        assert schema == {
+            "type": "object",
+            "properties": {
+                "foo": {"type": ["string", "boolean"], "enum": ["a", "b", False]},
+                "bar": {"type": ["integer", "null"], "enum": [1, None]},
+            },
+            "required": ["foo", "bar"],
+        }
 
     @pytest.mark.parametrize(
         "as_dataclass",
@@ -246,6 +284,7 @@ class TestToSchema:
             bar: NotRequired[int]
             baz: NotRequired[float]
             qux: NotRequired[bool]
+            nay: NotRequired[None]
 
         schema = to_json_schema(MyTypedDict1)
 
@@ -256,6 +295,7 @@ class TestToSchema:
                 "bar": {"type": "integer"},
                 "baz": {"type": "number"},
                 "qux": {"type": "boolean"},
+                "nay": {"type": "null"},
             },
             "required": [],
         }

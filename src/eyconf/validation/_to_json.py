@@ -23,6 +23,7 @@ primitives: dict[type[object], "str"] = {
     int: "integer",
     float: "number",
     bool: "boolean",
+    NoneType: "null",
 }
 
 
@@ -170,9 +171,6 @@ def __convert_type_to_schema(
     if match:
         return {"type": match}, is_required
 
-    if field_type is None or field_type is NoneType:
-        return {"type": "null"}, is_required
-
     if field_type is Any:
         return {}, is_required
 
@@ -180,9 +178,20 @@ def __convert_type_to_schema(
 
 
 def __infer_type_from_values(values: tuple | list):
-    # Create set of types
-    types = {type(value) for value in values}
-    if len(types) > 1:
-        raise ValueError("Literal values must all be of the same type")
 
-    return primitives[types.pop()]
+    types : list[type] = []
+    for value in values:
+        value_type = type(value)
+        if value_type not in types:
+            types.append(value_type)
+
+    type_names : list[str] = []
+    for t in types:
+        if t in primitives:
+            type_names.append(primitives[t])
+        else:
+            raise ValueError(f"Unsupported literal type: {t}")
+    if len(type_names) == 1:
+        return type_names[0]
+    else:
+        return type_names
