@@ -66,9 +66,11 @@ class EYConfBase(Generic[D]):
 
         # Will raise ConfigurationError if the data does not comply with the schema
         validate_json(data, self._json_schema)
-        self._data = (
-            data if is_dataclass(data) else dataclass_from_dict(self._schema, data)
-        )
+        if is_dataclass(data):
+            self._data = data
+        else:
+            self._data = self._schema()  # type: ignore[bad-assignment]
+            self.update(data)
 
     def validate(self):
         """Validate the current data against the schema."""
