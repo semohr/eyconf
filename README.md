@@ -22,76 +22,54 @@
 </p>
 
 
-## Features
+## Why EYConf?
 
 <!-- start features -->
-- **Generate**: Automatically convert a schema to a yaml configuration file, including comments!
-- **Validate**: Validate a given configuration file against your schema and raise human readable errors!
-- **Extend**: Introduce custom logic by extending the `EYConf` class!
-- **Reload**: Reload your configuration on the fly without restarting your application!
+- **Schema-First Configuration**: Define your config structure with Python dataclasses, get automatic YAML generation with comments
+- **Type-Safe Access**: Access nested configuration values with full IDE support and runtime type checking
+- **Validation First**: Catch configuration errors early with detailed, human-readable validation messages
+- **Zero Boilerplate**: No manual YAML parsing, no dictionary access - just clean attribute access to your configuration
 <!-- end features -->
 
 ## Installation
 
+<!-- start installation -->
 You can install EYConf from [PyPI](https://pypi.org/project/eyconf/) using pip.
 
 ```bash
 pip install eyconf
 ```
+<!-- end installation -->
 
 ## Example Usage
+
+<!-- start usage -->
 
 ```python
 from dataclasses import dataclass
 from eyconf import EYConf
 
 @dataclass
-class Transport:
-    """Email transport configuration"""
-    host: str = 'imap.example.com'
-    port: int = 993
-    username: str = 'user'
-    password: str = 'password'
-    use_ssl: bool = False
+class AppConfig:
+    """Application configuration"""
+    database_url: str = "sqlite:///app.db"
+    debug: bool = False
 
-@dataclass
-class Other:
-    """Other configuration options"""
-    bar: int | None = None
+# Creates/loads config.yaml automatically
+config = EYConf(AppConfig)
 
-@dataclass
-class ConfigSchema:
-    """My configuration schema
-
-    Docstrings are used as comments in the generated yaml file!
-    """
-    transport: Transport
-    other: Other
-
-
-config = EYConf(ConfigSchema)
+# Use your config
+print(config.data.debug)  # False
 ```
 
-This generate the following `config.yaml` file in your current working directory:
+This will create a `config.yaml` file in your current working directory with the following content:
 
 ```yaml
-# My configuration schema
-# Docstrings are used as comments in the generated yaml file!
+# Application configuration
 
-transport:
-  # Email transport configuration
-
-  host: imap.example.com
-  port: 993
-  username: user
-  password: password
-  use_ssl: false
-
-other:
-  # Other configuration options
-
-  bar: null
-
+database_url: sqlite:///app.db
+debug: false
 ```
+<!-- end usage -->
 
-Please refer to the [documentation](https://eyconf.readthedocs.io/en/latest/) for more information.
+Please refer to the [documentation](https://eyconf.readthedocs.io/en/latest/) for more examples and detailed usage instructions.

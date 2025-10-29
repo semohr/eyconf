@@ -1,6 +1,6 @@
 [project]
 name = "eyconf"
-version = "0.2.1"
+version = "0.3.0"
 authors = [{ name = "Sebastian B. Mohr", email = "sebastian@mohrenclan.de" }]
 description = "Easy Yaml based Configuration for Python"
 readme = "README.md"
@@ -39,6 +39,7 @@ docs = [
     "sphinxcontrib-typer[html]>=0.5.0",
     "myst-parser>=4.0.0",
     "myst-nb>=1.1.2",
+    "sphinx_design>=0.6.1"
 ]
 cli = ["typer"]
 

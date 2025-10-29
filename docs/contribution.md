@@ -37,6 +37,8 @@ Verify that your code follows the project's coding standards and conventions. Ru
 ruff check
 # Run the tests
 pytest
+# Run type checking
+pyrefly check
 ```
 
 ## Docs
