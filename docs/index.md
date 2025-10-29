@@ -21,7 +21,7 @@ EyConf is a Python package that allows you to quickly create yaml based configur
 maxdepth: 1
 ---
 
-quickstart
+getting-started
 cli
 contribution
 faq

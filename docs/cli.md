@@ -1,4 +1,4 @@
-# CLI for eyconf
+# Typer CLI integration
 
 
 The `eyconf.cli` module provides a convenient way to create a command-line interface (CLI) for managing configuration files using the [typer library](https://typer.tiangolo.com/). This can be particularly useful when you want to provide users with the ability to interact and modify configuration files via the terminal.
