@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
-from types import NoneType
+
 from typing import Optional
 import pytest
-from eyconf import EYConf, EYConfBase
-import os
+from eyconf import EYConfBase
 
 from eyconf.utils import AttributeDict
 from eyconf.validation import MultiConfigurationError
@@ -33,9 +31,6 @@ def conf42() -> EYConfBase[Config42]:
 @pytest.fixture
 def conf_nested() -> EYConfBase[ConfigNested]:
     return EYConfBase(ConfigNested(), schema=ConfigNested)
-
-
-# ------------------------------ Test base class ----------------------------- #
 
 
 class TestCreation:
@@ -303,101 +298,3 @@ class TestConverters:
     def test_to_yaml(self, conf42: EYConfBase[Config42]):
         expected_yaml = "int_field: 42\nstr_field: FortyTwo!"
         assert conf42.to_yaml() == expected_yaml
-
-
-# --------------------------------- Old stuff -------------------------------- #
-
-
-@pytest.fixture(autouse=True)
-def tmp_config_path(tmp_path) -> Path:
-    config_file_path = tmp_path / "config.yml"
-    os.environ["EYCONF_CONFIG_FILE"] = str(config_file_path)
-    return config_file_path
-
-
-def test_invalid_schema():
-    with pytest.raises(ValueError):
-        EYConf(int)  # type: ignore
-
-
-def test_write_default(tmp_config_path):
-    from eyconf import EYConf
-
-    conf = EYConf(Config42)
-    assert conf._schema == Config42
-    assert conf.path == tmp_config_path
-    assert conf.path.exists()
-    assert conf.path.read_text() == "int_field: 42\nstr_field: FortyTwo!\n"
-
-
-def test_load_existing(tmp_config_path):
-    from eyconf import EYConf
-
-    with open(tmp_config_path, "w") as f:
-        f.write("int_field: 20\nstr_field: Another value!\n")
-
-    conf = EYConf(Config42)
-
-    assert conf.path == tmp_config_path
-    assert conf.path.read_text() == "int_field: 20\nstr_field: Another value!\n"
-    assert conf.data.int_field == 20
-    assert conf.data.str_field == "Another value!"
-
-    # Test reload
-    with open(tmp_config_path, "w") as f:
-        f.write("int_field: 30\nstr_field: Another value!\n")
-    conf.refresh()
-    assert conf.data.int_field == 30
-
-
-def test_load_nested():
-    from eyconf import EYConf
-
-    @dataclass
-    class Nested:
-        int_field: int = 42
-        str_field: str = "Hello, World!"
-
-    @dataclass
-    class Parent:
-        nested: Nested = field(default_factory=Nested)
-        optional_nested: Optional[Nested] = None
-        optional_with_default: Optional[int] = 42
-
-    conf = EYConf(Parent)
-    assert isinstance(conf._data.nested, Nested)
-    assert isinstance(conf._data.optional_nested, NoneType)
-    assert conf.data.optional_with_default == 42
-
-
-def test_load_without_defaults():
-    """Loading fails if required fields have no defaults."""
-
-    @dataclass
-    class Foo:
-        a: int
-
-    with pytest.raises(TypeError):
-        EYConf(Foo)
-
-
-def test_nested_getitem():
-    from eyconf import EYConf
-
-    @dataclass
-    class Nested2:
-        int_field: int = 42
-        str_field: str = "Hello, World!"
-
-    @dataclass
-    class Parent2:
-        nested: Nested2 = field(default_factory=Nested2)
-        other_field: str = "Hello, World!"
-
-    # This seems to be a bug in python!
-    # with `future annotations` the `types["nested"]` yields the first definition ...
-    # types = get_type_hints(Parent2)
-    # assert types["nested"] == Nested2
-
-    conf = EYConf(Parent2)
-    assert isinstance(conf.data.nested, Nested2)

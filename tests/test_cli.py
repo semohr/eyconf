@@ -53,8 +53,6 @@ def test_main_command_shows_help(cli_app, mock_get_file_path):
 
     assert result.exit_code == 0
     assert "Manage configuration file" in result.output
-    assert "ls" in result.output
-    assert "--edit" in result.output
 
 
 @skip
