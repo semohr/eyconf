@@ -193,7 +193,7 @@ def __field_to_lines(field: Field[Any], field_type: type, indent=0) -> list[Line
     list[str]
         A list of lines, each no longer than `l` characters.
     """
-    lines = []
+    lines: list[Line] = []
     origin = get_origin(field_type)
     args = get_args(field_type)
 

@@ -28,6 +28,7 @@ build-backend = "hatchling.build"
 
 
 [project.optional-dependencies]
+typed = ["pyrefly", "types-pyyaml"]
 test = ["pytest", "pytest-cov>=5.0.0"]
 dev = ["ruff>=0.8.6", "pre-commit", "eyconf[test, cli]"]
 docs = [
@@ -53,6 +54,7 @@ select = ["I", "D", "F"]
 ignore = ["D104", "D100"]
 fixable = ["ALL"]
 
+
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["D", "I", "S", "W"]
 "**__main__.py" = ["D103"]
@@ -71,3 +73,6 @@ log_level = "DEBUG"
 [tool.coverage.report]
 omit = ["*/tests/*"]
 exclude_also = ["raise NotImplementedError", "@(abc\\.)?abstractmethod"]
+
+[tool.pyrefly]
+project-includes = ["**/*.py*"]

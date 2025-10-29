@@ -3,24 +3,66 @@
 from __future__ import annotations
 
 import logging
-from typing import cast
+from dataclasses import asdict, is_dataclass
+from typing import TYPE_CHECKING, TypeVar, cast
+
+from eyconf.utils import dataclass_from_dict
 
 log = logging.getLogger(__name__)
-
 
 from jsonschema import Draft202012Validator, ValidationError
 
 from ._to_json import to_json_schema
 
+if TYPE_CHECKING:
+    from _typeshed import DataclassInstance
+
 __all__ = [
     "to_json_schema",
-    "validate",
+    "validate_json",
     "ConfigurationError",
     "MultiConfigurationError",
 ]
 
+D = TypeVar("D", bound="DataclassInstance")
 
-def validate(data: dict, schema: dict) -> None:
+
+def validate(data: D | dict, schema: type[D]) -> D:
+    """Validate the provided data against the schema and return the dataclass instance.
+
+    This function first converts the schema dataclass to a JSON schema using
+    `to_json_schema`, then validates the provided data against this schema
+    using `validate_json`. If validation is successful, it returns an instance
+    of the schema dataclass populated with the validated data.
+
+    For more controls over validation, consider using `to_json_schema` and `validate_json`.
+
+    Parameters
+    ----------
+    data (D | dict):
+        The data to be validated, either as a dictionary or an instance of the schema dataclass.
+    schema (type[D]):
+        The dataclass type representing the schema to validate against.
+
+    Returns
+    -------
+    D
+        An instance of the schema dataclass populated with the validated data.
+
+    Raises
+    ------
+    ConfigurationError: If the data does not comply with the schema,
+        this error is raised with details of the violations.
+
+    """
+    json_schema = to_json_schema(schema)
+    if is_dataclass(data):
+        data = asdict(data)
+    validate_json(data, json_schema)
+    return dataclass_from_dict(schema, **data)
+
+
+def validate_json(data: DataclassInstance | dict, schema: dict) -> None:
     """Validate the provided data against the given schema.
 
     This function uses the Draft202012Validator to check if the data
@@ -39,21 +81,28 @@ def validate(data: dict, schema: dict) -> None:
     ConfigurationError: If the data does not comply with the schema,
                           this error is raised with details of the violations.
     """
+    if is_dataclass(data):
+        data = asdict(data)
+
     schema = allow_none_in_schema(schema)
-    validator = Draft202012Validator(schema)
+    validator = Draft202012Validator(schema)  # type: ignore[bad-instantiation]
 
     errors = list(validator.iter_errors(data))
     if errors:
         import json
 
         log.error("Validation errors in configuration data!")
-        log.debug(f"Data: {data}")
+        log.debug(f"Data: {json.dumps(data, indent=2)}")
         log.debug(f"Schema: {json.dumps(schema, indent=2)}")
         raise ConfigurationError.from_ValidationErrors(errors)
 
 
 def allow_none_in_schema(schema: dict | list) -> dict:  # -> dict[Any, Any] | list[Any]:
-    """Recursively modifies a JSON schema to allow `null` values for all fields."""
+    """
+    Recursively modifies a JSON schema to allow `null` values for all fields.
+
+    This is needed to parse Optional fields that hold dataclasses. May need a revisit later.
+    """
     if isinstance(schema, dict):
         # If current schema block has "type"
         if "type" in schema:

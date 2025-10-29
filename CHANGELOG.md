@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0]
+
+* Added support for extra fields in configuration schemas. Additional fields are not typed but can be retrieved. Use `EYConfExtraFields` for even more flexibility.
+* Modularized config.py file into multiple modules for better maintainability.
+* Added `update` method to `EYConfBase` for updating configuration data programmatically.
+* Improved tests and test coverage, especially for edge cases in the update function.
+* Default `__getattr__` behavior is removed in favor of explicit access methods to avoid confusion with extra fields. Use `config.data.field_name` to access fields!
+
 ## [0.2.1]
 
 ### Fixed

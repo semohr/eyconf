@@ -46,6 +46,16 @@ def cli_app():
 
 
 @skip
+def test_main_command_shows_help(cli_app, mock_get_file_path):
+    """Test that invoking the main command without subcommands shows help."""
+    runner = CliRunner()
+    result = runner.invoke(cli_app, [])
+
+    assert result.exit_code == 0
+    assert "Manage configuration file" in result.output
+
+
+@skip
 def test_ls_command(cli_app, mock_get_file_path):
     """Test the 'ls' command to list current configuration."""
     runner = CliRunner()

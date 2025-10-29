@@ -45,7 +45,7 @@ def to_json_schema(
     SchemaError
         If the schema is invalid (should not happen).
     """
-    schema = {
+    schema: dict[str, Any] = {
         "type": "object",
         "properties": {},
         "required": [],

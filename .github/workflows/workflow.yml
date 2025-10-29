@@ -1,54 +1,76 @@
 name: Python checks
 
 on:
-    push:
-        branches: ["main"]
-    pull_request:
-        # The branches below must be a subset of the branches above
-        branches: ["main"]
+  push:
+    branches: ["main"]
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: ["main"]
 
 jobs:
-    ruff:
-        name: Ruff check and linting
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - name: Install Python
-              uses: actions/setup-python@v5
-              with:
-                  python-version: "3.11"
-            - name: Install dependencies
-              run: |
-                  python -m pip install --upgrade pip
-                  pip install .[dev]
-            - name: Check style with Ruff
-              run: |
-                  ruff check --output-format=github .
-    pytest:
-        name: Pytest
-        runs-on: ubuntu-latest
-        strategy:
-            fail-fast: false
-            matrix:
-                python-version: ["3.10", "3.11", "3.12", "3.13"]
-        steps:
-            - uses: actions/checkout@v4
-            - name: Install Python
-              uses: actions/setup-python@v5
-              with:
-                  python-version: ${{ matrix.python-version }}
-            - name: Install dependencies
-              run: |
-                  python -m pip install --upgrade pip
-                  pip install .[dev]
-            - name: Copy test_generate and remove __future__ import
-              run: |
-                  for file in tests/test_*.py; do
-                      if [ -f "$file" ]; then
-                          basename=$(basename "$file" .py)
-                          sed '/from __future__ import annotations/d' "$file" > "tests/${basename}_no_future.py"
-                      fi
-                  done
-            - name: Test with pytest
-              run: |
-                  coverage run -m pytest -v -s
+  ruff:
+    name: Ruff check and linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[dev]
+      - name: Check style with Ruff
+        run: |
+          ruff check --output-format=github .
+
+  typecheck:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install '.[dev,typed]'
+      - name: Run Pyrefly Type Checker
+        run: pyrefly check
+
+  pytest:
+    name: Pytest
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[dev]
+      - name: Copy test_generate and remove __future__ import
+        run: |
+          for file in tests/test_*.py; do
+              if [ -f "$file" ]; then
+                  basename=$(basename "$file" .py)
+                  sed '/from __future__ import annotations/d' "$file" > "tests/${basename}_no_future.py"
+              fi
+          done
+      - name: Test with pytest
+        env:
+          PYTEST_ADDOPTS: "--color=yes"
+        run: |
+          pytest --cov=eyconf --cov=tests --cov-report=xml
