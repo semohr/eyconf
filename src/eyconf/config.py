@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from copy import deepcopy
-from dataclasses import asdict, is_dataclass, replace
+from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -15,6 +16,7 @@ from typing import (
 
 import yaml
 
+from eyconf.type_utils import get_type_hints_resolve_namespace
 from eyconf.utils import (
     AccessProxy,
     AttributeDict,
@@ -72,51 +74,60 @@ class EYConfBase(Generic[D]):
 
         # Will raise ConfigurationError if the data does not comply with the schema
         validate_json(data, self._json_schema)
-        self._data = self._schema(**data) if not is_dataclass(data) else data
+        self._data = (
+            data if is_dataclass(data) else dataclass_from_dict(self._schema, data)
+        )
 
     def validate(self):
         """Validate the current data against the schema."""
         validate_json(self._data, self._json_schema)
 
-    def update(self, data: dict | D):
-        def _update(st: type[DataclassInstance], di: DataclassInstance, ud: dict):
-            s_keys = set(st.__dataclass_fields__.keys())
-            d_keys = set(di.__dataclass_fields__.keys())
-            d_keys = set([k for k in d_keys if hasattr(di, k)])
-            u_keys = set(ud.keys())
+    def update(self, data: dict):
+        """Update the configuration with provided data.
 
-            for key in u_keys:
-                if key in d_keys:
-                    # easy, update recursively
-                    if is_dataclass(getattr(di, key)):
+        This applies an partial update to the existing configuration data.
+        Only the provided keys will be updated, others will remain unchanged.
+        """
+
+        def _update(
+            target_type: type[DataclassInstance],
+            target: DataclassInstance,
+            update_data: dict,
+        ):
+            target_annotations = get_type_hints_resolve_namespace(target_type)
+
+            for key, value in update_data.items():
+                if hasattr(target, key):
+                    current_value = getattr(target, key)
+
+                    # Handle dataclass fields
+                    if is_dataclass(current_value):
                         _update(
-                            st.__annotations__[key],
-                            getattr(di, key),
-                            ud[key],
+                            target_annotations[key],
+                            current_value,  # type: ignore[arg-type]
+                            value,
                         )
-                    elif getattr(di, key) is None and isinstance(ud[key], dict):
-                        # Optional field was previously not populated
+                    # Handle Optional fields that were previously None
+                    elif current_value is None and isinstance(value, dict):
                         nested_instance = dataclass_from_dict(
-                            st.__annotations__[key], ud[key]
+                            target_annotations[key], value
                         )
-                        setattr(di, key, nested_instance)
+                        setattr(target, key, nested_instance)
                     else:
-                        # Primitives
-                        setattr(di, key, ud[key])
+                        # Primitives and direct assignments
+                        setattr(target, key, value)
                 else:
-                    # can only happen for non-schema fields
-                    # i.e. in EYConfAdditional
-                    # breakpoint()
-                    if isinstance(ud[key], dict):
-                        setattr(di, key, AttributeDict(**ud[key]))
+                    # Non-schema fields (EYConfAdditional)
+                    if isinstance(value, dict):
+                        setattr(target, key, AttributeDict(**value))
                     else:
-                        # Primitives
-                        setattr(di, key, ud[key])
+                        setattr(target, key, value)
 
         old_data = deepcopy(self._data)
-        _update(
-            self._schema, self._data, data if not is_dataclass(data) else asdict(data)
-        )
+        update_dict = data if not is_dataclass(data) else asdict(data)
+
+        _update(self._schema, self._data, update_dict)
+
         try:
             self.validate()
         except Exception as e:
@@ -124,14 +135,17 @@ class EYConfBase(Generic[D]):
             raise e from e
 
     def overwrite(self, data: dict | D):
-        """
-        Set all keys from provided data.
+        """Overwrite the configuration with provided data.
 
-        Keys missing in new provided data, but present in old will be lost.
+        If the provided data is missing required fields, an error will be raised.
         """
         data = asdict(data) if is_dataclass(data) else data
         validate_json(data, self._json_schema)
         self._data = dataclass_from_dict(self._schema, data)
+
+    def reset(self):
+        """Reset the configuration data to the default values."""
+        self._data = self._schema()
 
     # -------------------------------- Converters -------------------------------- #
 
@@ -148,8 +162,17 @@ class EYConfBase(Generic[D]):
         """
         return dataclass_to_yaml(self._schema)
 
-    def to_dict(self) -> dict:
-        """Convert the configuration data to a dictionary."""
+    def to_dict(self, include_additional: bool = False) -> dict:
+        """Convert the configuration data to a dictionary.
+
+        Parameters
+        ----------
+        include_additional : bool
+            Whether to include extra data not part of the schema.
+        """
+        if include_additional:
+            # A bit hacky but works for now
+            return json.loads(json.dumps(self._data, default=lambda o: o.__dict__))
         return asdict(self._data)
 
     def to_yaml(self) -> str:
@@ -183,17 +206,6 @@ class EYConfBase(Generic[D]):
             else:
                 result.append(" " * indent + f"{key}: {value}")
         return "\n".join(result)
-
-
-"""
-config._data
-config._additional_data
-
-config.data
--> _data
--> _additional_data
--> type : D
-"""
 
 
 class EYConfAdditional(EYConfBase[D]):

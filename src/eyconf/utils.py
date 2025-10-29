@@ -1,9 +1,12 @@
+import logging
+from copy import deepcopy
 from dataclasses import dataclass, is_dataclass
 from types import NoneType, UnionType
 from typing import Any, Generic, TypeVar, Union, get_type_hints
 
 from typing_extensions import get_args, get_origin
 
+log = logging.getLogger(__name__)
 D = TypeVar("D")
 
 
@@ -40,6 +43,26 @@ class AttributeDict:
             else:
                 result[key] = value
         return result
+
+    def __deepcopy__(self, memo: dict) -> "AttributeDict":
+        """Create a deep copy of the AttributeDict."""
+        # Avoid infinite recursion with memo
+        if id(self) in memo:
+            return memo[id(self)]
+
+        # Create new instance
+        new_instance = AttributeDict()
+        memo[id(self)] = new_instance
+
+        # Deep copy all attributes
+        for key, value in self.__dict__.items():
+            # Use copy.deepcopy for nested objects, but handle AttributeDict specially
+            if isinstance(value, AttributeDict):
+                setattr(new_instance, key, deepcopy(value, memo))
+            else:
+                setattr(new_instance, key, deepcopy(value, memo))
+
+        return new_instance
 
 
 class AccessProxy(Generic[D]):
@@ -108,9 +131,14 @@ def dataclass_from_dict(in_type: type[D], data: dict) -> D:
 
     if isinstance(data, dict):
         field_types = get_type_hints(in_type, include_extras=False)
-        return in_type(
-            **{f: dataclass_from_dict(field_types[f], data[f]) for f in data}
-        )
+
+        # It is possible that additional fields are present in data that are not
+        # part of the dataclass. We ignore them here.
+        found_fields = {}
+        for f in data:
+            if found_field := field_types.get(f, None):
+                found_fields[f] = dataclass_from_dict(found_field, data[f])
+        return in_type(**found_fields)
 
     if isinstance(data, (tuple, list)):
         return [dataclass_from_dict(in_type.__args__[0], f) for f in data]

@@ -92,7 +92,7 @@ def validate_json(data: DataclassInstance | dict, schema: dict) -> None:
         import json
 
         log.error("Validation errors in configuration data!")
-        log.debug(f"Data: {data}")
+        log.debug(f"Data: {json.dumps(data, indent=2)}")
         log.debug(f"Schema: {json.dumps(schema, indent=2)}")
         raise ConfigurationError.from_ValidationErrors(errors)
 
