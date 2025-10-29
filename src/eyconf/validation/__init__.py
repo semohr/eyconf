@@ -85,7 +85,7 @@ def validate_json(data: DataclassInstance | dict, schema: dict) -> None:
         data = asdict(data)
 
     schema = allow_none_in_schema(schema)
-    validator = Draft202012Validator(schema)
+    validator = Draft202012Validator(schema)  # type: ignore[bad-instantiation]
 
     errors = list(validator.iter_errors(data))
     if errors:

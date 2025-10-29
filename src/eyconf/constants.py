@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Sequence, Union
 from typing_extensions import Final
 
 if TYPE_CHECKING:
-    Primitives = Union[int, float, str, bool, type(None), NoneType]
+    Primitives = Union[int, float, str, bool, None]
 
 
 primitive_types: Final[Sequence[type[object]]] = [

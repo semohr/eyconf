@@ -198,7 +198,7 @@ class EYConfBase(Generic[D]):
 
     def _pretty_format(self, data, indent=0):
         """Format the dict with pretty indentation."""
-        result = []
+        result: list[str] = []
         for key, value in data.items():
             if isinstance(value, dict):
                 result.append(" " * indent + f"{key}:")

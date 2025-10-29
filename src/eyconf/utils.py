@@ -7,6 +7,7 @@ from typing import Any, Generic, TypeVar, Union, get_type_hints
 from typing_extensions import get_args, get_origin
 
 log = logging.getLogger(__name__)
+
 D = TypeVar("D")
 
 
@@ -110,37 +111,56 @@ class AccessProxy(Generic[D]):
 
 
 def dataclass_from_dict(in_type: type[D], data: dict) -> D:
-    """Convert a dict to a dataclass instance of the given type."""
-    # If type is a union try all args
+    """Convert a dict to a dataclass instance of the given type. Always returns a dataclass."""
+    result = _dataclass_from_dict_inner(in_type, data)
+    if result is None:
+        raise ValueError(f"Could not parse data {data} with type {in_type}")
+    return result
+
+
+def _dataclass_from_dict_inner(in_type: type, data: Any) -> Any:
+    """Inner function that handles Union types and may return None."""
+    # Handle Union types
     origin = get_origin(in_type)
     if origin is Union or origin is UnionType:
         args = get_args(in_type)
-        includes_none = False
-        for arg in args:
-            if arg is NoneType or arg is None or arg is type(None):
-                includes_none = True
+        includes_none = any(arg is NoneType or arg is type(None) for arg in args)
 
         if data is None and includes_none:
             return None
-        for arg in args:
-            try:
-                return dataclass_from_dict(arg, data)
-            except Exception as _e:
-                pass
-        raise ValueError(f"Could not parse data {data} with type {in_type}")
 
+        for arg in args:
+            if arg is NoneType or arg is type(None):
+                continue
+            try:
+                return _dataclass_from_dict_inner(arg, data)
+            except (ValueError, TypeError, KeyError):
+                continue
+        return None
+
+    # Handle dict data - convert to dataclass
     if isinstance(data, dict):
         field_types = get_type_hints(in_type, include_extras=False)
 
-        # It is possible that additional fields are present in data that are not
-        # part of the dataclass. We ignore them here.
         found_fields = {}
-        for f in data:
-            if found_field := field_types.get(f, None):
-                found_fields[f] = dataclass_from_dict(found_field, data[f])
-        return in_type(**found_fields)
+        for field_name, field_type in field_types.items():
+            if field_name in data:
+                found_fields[field_name] = _dataclass_from_dict_inner(
+                    field_type, data[field_name]
+                )
 
-    if isinstance(data, (tuple, list)):
-        return [dataclass_from_dict(in_type.__args__[0], f) for f in data]
+        try:
+            return in_type(**found_fields)
+        except TypeError as e:
+            raise ValueError(f"Failed to create {in_type.__name__}: {e}")
 
+    # Handle sequence types (list, tuple)
+    if isinstance(data, (list, tuple)):
+        if hasattr(in_type, "__args__") and in_type.__args__:
+            elem_type = in_type.__args__[0]
+            return [_dataclass_from_dict_inner(elem_type, item) for item in data]
+        else:
+            return data
+
+    # Handle primitive types
     return data
