@@ -1,6 +1,10 @@
 # 📦 Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.3.2]
+
+* Added repr and str methods to AttributeDict for better debugging and logging.
+* Fixed issue where attribute access on EYConfExtraFields would populate data with empty AttributeDicts for missing extra fields.
 
 ## [0.3.1]
 

@@ -1,14 +1,19 @@
+from __future__ import annotations
+
 import logging
 from copy import deepcopy
-from dataclasses import dataclass, is_dataclass
+from dataclasses import asdict, dataclass, is_dataclass
 from types import NoneType, UnionType
-from typing import Any, Generic, TypeVar, Union, get_type_hints
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, Union, get_type_hints
 
 from typing_extensions import get_args, get_origin
 
+if TYPE_CHECKING:
+    from _typeshed import DataclassInstance
+
 log = logging.getLogger(__name__)
 
-D = TypeVar("D")
+D = TypeVar("D", bound="DataclassInstance")
 
 
 @dataclass
@@ -22,6 +27,9 @@ class AttributeDict:
 
     def __getattr__(self, name: str) -> Any:
         """Get attribute dynamically. If it does not exist, we create it."""
+        if name.startswith("_"):
+            raise AttributeError(f"{name} not found")
+
         try:
             return object.__getattribute__(self, name)
         except AttributeError:
@@ -34,6 +42,10 @@ class AttributeDict:
         if isinstance(value, dict):
             value = AttributeDict(**value)
         object.__setattr__(self, name, value)
+
+    def __getitem__(self, key: str) -> Any:
+        """Get item dynamically."""
+        return self.__getattr__(key)
 
     def as_dict(self) -> dict:
         """Convert the AttributeDict to a standard dictionary."""
@@ -65,6 +77,14 @@ class AttributeDict:
 
         return new_instance
 
+    def __repr__(self) -> str:
+        """Representation of the AttributeDict."""
+        return f"AttributeDict({self.as_dict()})"
+
+    def __str__(self) -> str:
+        """Use the dict string representation."""
+        return str(self.as_dict())
+
 
 class AccessProxy(Generic[D]):
     """Proxy to access attributes dynamically."""
@@ -84,10 +104,14 @@ class AccessProxy(Generic[D]):
             # Needed for accessing a mixed case, where we add an unknown property to
             # a nested schema. In this case, we need the same extra level in _extra_data.
             if is_dataclass(ret):
-                return AccessProxy(ret, getattr(self._extra_data, name))
+                return AccessProxy(ret, getattr(self._extra_data, name))  # type: ignore[arg-type]
             return getattr(self._data, name)
         except AttributeError:
             return getattr(self._extra_data, name)
+
+    def __getitem__(self, key: str) -> Any:
+        """Get item dynamically."""
+        return self.__getattr__(key)
 
     def __setattr__(self, name: str, value: Any):
         """Set attribute on either the typed data or additional data."""
@@ -108,6 +132,13 @@ class AccessProxy(Generic[D]):
                 delattr(self._data, name)
             else:
                 delattr(self._extra_data, name)
+
+    def as_dict(self) -> dict:
+        """Convert the AccessProxy to a standard dictionary."""
+        merged = deepcopy(self._extra_data.as_dict())
+        data_dict = deepcopy(asdict(self._data))
+        result = merge_dicts(data_dict, merged)
+        return result
 
 
 def merge_dicts(a: dict, b: dict, path=[]):

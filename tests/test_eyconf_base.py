@@ -139,12 +139,14 @@ class TestUpdate:
         assert conf42.data.int_field == 42
 
     def test_additional_fields(self, conf42: EYConfBase[Config42]):
+        conf42.allow_additional_properties = True
         conf42.update({"int_field": 100, "new_field": "I am new!"})
 
         assert conf42.data.int_field == 100
         assert conf42.data.new_field == "I am new!"  # type: ignore[attr]
 
     def test_additional_fields_nested(self, conf_nested: EYConfBase[ConfigNested]):
+        conf_nested.allow_additional_properties = True
         conf_nested.update(
             {
                 "nested": {"new_nested_field": {"foo": "bar"}},
@@ -155,6 +157,7 @@ class TestUpdate:
         assert isinstance(conf_nested.data.nested.new_nested_field, AttributeDict)  # type: ignore[attr]
 
     def test_additional_fields_nested_deep(self, conf_nested: EYConfBase[ConfigNested]):
+        conf_nested.allow_additional_properties = True
         # Even more nesting
         conf_nested.update(
             {
@@ -223,6 +226,7 @@ class TestReset:
         assert conf42.data.str_field == "FortyTwo!"
 
     def test_nested(self, conf_nested: EYConfBase[ConfigNested]):
+        conf_nested.allow_additional_properties = True
         conf_nested.update(
             {
                 "nested": {"int_field": 100, "str_field": "Updated nested value!"},
@@ -256,6 +260,7 @@ class TestConverters:
         assert conf42.to_dict() == expected
 
     def test_extra_data_as_dict(self, conf42: EYConfBase[Config42]):
+        conf42.allow_additional_properties = True
         conf42.update({"new_field": "I am new!"})
 
         assert conf42.to_dict(include_additional=True) == {
@@ -269,6 +274,7 @@ class TestConverters:
         }
 
     def test_extra_data_as_dict_nested(self, conf_nested: EYConfBase[ConfigNested]):
+        conf_nested.allow_additional_properties = True
         conf_nested.update(
             {
                 "nested": {"new_nested_field": {"foo": "bar"}},

@@ -1,5 +1,5 @@
 from dataclasses import asdict
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from eyconf.utils import AccessProxy, AttributeDict, merge_dicts
 
@@ -50,3 +50,18 @@ class EYConfExtraFields(EYConfBase[D]):
         if include_additional:
             data = merge_dicts(data, self.extra_data.as_dict())
         return data
+
+    def _update_additional(self, target, key, value: Any, _current_path: list[str]):
+        if not self.allow_additional_properties:
+            raise AttributeError(
+                f"Cannot set unknown attribute '{key}' on configuration."
+            )
+
+        extra_data = self._extra_data
+        for path_part in _current_path:
+            extra_data: AttributeDict = getattr(extra_data, path_part)
+
+        if isinstance(value, dict):
+            setattr(extra_data, key, AttributeDict(**value))
+        else:
+            setattr(extra_data, key, value)

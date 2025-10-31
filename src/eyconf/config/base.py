@@ -12,6 +12,7 @@ from copy import deepcopy
 from dataclasses import asdict, is_dataclass
 from typing import (
     TYPE_CHECKING,
+    Any,
     Generic,
     TypeVar,
 )
@@ -42,6 +43,7 @@ class EYConfBase(Generic[D]):
     _schema: type[D]
     _data: D
     _json_schema: dict
+    allow_additional_properties: bool
 
     def __init__(
         self,
@@ -59,6 +61,7 @@ class EYConfBase(Generic[D]):
             self._schema = type(data)
 
         # Create schema, raise if Schema is invalid
+        self.allow_additional_properties = allow_additional_properties
         self._json_schema = to_json_schema(
             self._schema,
             allow_additional=allow_additional_properties,
@@ -87,6 +90,7 @@ class EYConfBase(Generic[D]):
             target_type: type[DataclassInstance],
             target: DataclassInstance,
             update_data: dict,
+            _current_path: list[str] = [],
         ):
             target_annotations = get_type_hints_resolve_namespace(target_type)
             # breakpoint()
@@ -103,6 +107,7 @@ class EYConfBase(Generic[D]):
                             target_annotations[key],
                             current_value,  # type: ignore[arg-type]
                             value,
+                            _current_path + [key],
                         )
                     # Handle Optional fields that were previously None
                     elif current_value is None and isinstance(value, dict):
@@ -124,10 +129,9 @@ class EYConfBase(Generic[D]):
                         setattr(target, key, value)
                 else:
                     # Non-schema fields (EYConfAdditional)
-                    if isinstance(value, dict):
-                        setattr(target, key, AttributeDict(**value))
-                    else:
-                        setattr(target, key, value)
+                    self._update_additional(
+                        target, key, value, _current_path=_current_path
+                    )
 
         old_data = deepcopy(self._data)
         update_dict = data if not is_dataclass(data) else asdict(data)
@@ -139,6 +143,18 @@ class EYConfBase(Generic[D]):
         except Exception as e:
             self._data = old_data
             raise e from e
+
+    def _update_additional(self, target, key, value: Any, _current_path: list[str]):
+        if not self.allow_additional_properties:
+            raise AttributeError(
+                f"Cannot set unknown attribute '{
+                    '.'.join(_current_path + [key])
+                }' on configuration."
+            )
+        if isinstance(value, dict):
+            setattr(target, key, AttributeDict(**value))
+        else:
+            setattr(target, key, value)
 
     def overwrite(self, data: dict | D):
         """Overwrite the configuration with provided data.
