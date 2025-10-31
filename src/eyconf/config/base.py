@@ -147,9 +147,8 @@ class EYConfBase(Generic[D]):
     def _update_additional(self, target, key, value: Any, _current_path: list[str]):
         if not self.allow_additional_properties:
             raise AttributeError(
-                f"Cannot set unknown attribute '{
-                    '.'.join(_current_path + [key])
-                }' on configuration."
+                "Cannot set unknown attribute"
+                f" '{'.'.join(_current_path + [key])}' on configuration."
             )
         if isinstance(value, dict):
             setattr(target, key, AttributeDict(**value))
