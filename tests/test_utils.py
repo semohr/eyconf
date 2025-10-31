@@ -48,6 +48,15 @@ class TestAttributeDict:
 
         assert attr_dict.as_dict() == expected
 
+    def test_bool_conversion(self):
+        attr_dict = AttributeDict()
+        attr_dict.foo = "bar"  # type: ignore
+
+        assert bool(attr_dict) is True
+
+        empty_attr_dict = AttributeDict()
+        assert bool(empty_attr_dict) is False
+
 
 class TestAccessProxy:
     def test_access_fails(self):

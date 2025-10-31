@@ -85,6 +85,10 @@ class AttributeDict:
         """Use the dict string representation."""
         return str(self.as_dict())
 
+    def __bool__(self) -> bool:
+        """Return False if the AttributeDict is empty, True otherwise."""
+        return bool(self.__dict__)
+
 
 class AccessProxy(Generic[D]):
     """Proxy to access attributes dynamically."""
