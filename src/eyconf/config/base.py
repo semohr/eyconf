@@ -89,10 +89,13 @@ class EYConfBase(Generic[D]):
             update_data: dict,
         ):
             target_annotations = get_type_hints_resolve_namespace(target_type)
-
+            # breakpoint()
             for key, value in update_data.items():
+                # breakpoint()
                 if hasattr(target, key):
+                    # folders : dict[str, InboxFolder]
                     current_value = getattr(target, key)
+                    # current_value = {placeholder:Config42()}
 
                     # Handle dataclass fields
                     if is_dataclass(current_value):
@@ -107,6 +110,15 @@ class EYConfBase(Generic[D]):
                             target_annotations[key], value
                         )
                         setattr(target, key, nested_instance)
+                    elif current_annotation := target_annotations.get(key):
+                        nested = dataclass_from_dict(
+                            current_annotation,
+                            # TODO: If we want to implement a merge strategy
+                            # some like this could work:
+                            # merge_dicts(asdict(current_value), value),  # type: ignore[arg-type]
+                            value,
+                        )
+                        setattr(target, key, nested)
                     else:
                         # Primitives and direct assignments
                         setattr(target, key, value)

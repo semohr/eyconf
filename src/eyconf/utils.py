@@ -131,12 +131,12 @@ def dataclass_from_dict(in_type: type[D], data: dict) -> D:
     return result
 
 
-def _dataclass_from_dict_inner(in_type: type, data: Any) -> Any:
+def _dataclass_from_dict_inner(target_type: type, data: Any) -> Any:
     """Inner function that handles Union types and may return None."""
     # Handle Union types
-    origin = get_origin(in_type)
+    origin = get_origin(target_type)
     if origin is Union or origin is UnionType:
-        args = get_args(in_type)
+        args = get_args(target_type)
         includes_none = any(arg is NoneType or arg is type(None) for arg in args)
 
         if data is None and includes_none:
@@ -152,8 +152,8 @@ def _dataclass_from_dict_inner(in_type: type, data: Any) -> Any:
         return None
 
     # Handle dict data - convert to dataclass
-    if isinstance(data, dict):
-        field_types = get_type_hints(in_type, include_extras=False)
+    if isinstance(data, dict) and is_dataclass(target_type):
+        field_types = get_type_hints(target_type, include_extras=False)
 
         found_fields = {}
         for field_name, field_type in field_types.items():
@@ -163,14 +163,24 @@ def _dataclass_from_dict_inner(in_type: type, data: Any) -> Any:
                 )
 
         try:
-            return in_type(**found_fields)
+            return target_type(**found_fields)  # type: ignore[bad-instantiation]
         except TypeError as e:
-            raise ValueError(f"Failed to create {in_type.__name__}: {e}")
+            raise ValueError(f"Failed to create {target_type.__name__}: {e}")
+
+    # Potentially nested dataclass in dicts
+    if isinstance(data, dict) and get_origin(target_type) is dict:
+        key_type, value_type = get_args(target_type)
+        return {
+            _dataclass_from_dict_inner(key_type, k): _dataclass_from_dict_inner(
+                value_type, v
+            )
+            for k, v in data.items()
+        }
 
     # Handle sequence types (list, tuple)
     if isinstance(data, (list, tuple)):
-        if hasattr(in_type, "__args__") and in_type.__args__:
-            elem_type = in_type.__args__[0]
+        if hasattr(target_type, "__args__") and target_type.__args__:
+            elem_type = target_type.__args__[0]
             return [_dataclass_from_dict_inner(elem_type, item) for item in data]
         else:
             return data

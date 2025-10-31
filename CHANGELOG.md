@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1]
+
+* Fixed an issue with updates not beeing applied to dataclasses if given a nested dict. E.g. `dict[str, Class]` was interpreted as `dict[str, dict]` and not converted to the target dataclass.
+
 ## [0.3.0]
 
 * Added support for extra fields in configuration schemas. Additional fields are not typed but can be retrieved. Use `EYConfExtraFields` for even more flexibility.

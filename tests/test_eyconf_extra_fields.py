@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import pytest
 from eyconf.config import EYConfExtraFields
 from eyconf.utils import AccessProxy
 
@@ -63,3 +64,67 @@ class TestEYConfExtraFields:
             "int_field": 42,
             "str_field": "FortyTwo!",
         }
+
+    def test_update_dict(self):
+        @dataclass
+        class SchemaDict:
+            folders: dict[str, Config42] = field(
+                default_factory=lambda: {"placeholder": Config42()}
+            )
+
+        config = EYConfExtraFields(SchemaDict())
+
+        assert config.data.folders["placeholder"].int_field == 42
+        for folder in config.data.folders.values():
+            assert isinstance(folder, Config42)
+
+        config.update(
+            {
+                "folders": {
+                    "config1": {"int_field": 1, "str_field": "One"},
+                    "config2": {"int_field": 2, "str_field": "Two"},
+                }
+            }
+        )
+
+        assert config.data.folders["config1"].int_field == 1
+        assert config.data.folders["config1"].str_field == "One"
+        assert config.data.folders["config2"].int_field == 2
+        assert config.data.folders["config2"].str_field == "Two"
+
+        # We should revise this with a merge strategy later
+        with pytest.raises(KeyError):
+            config.data.folders["placeholder"]
+
+    def test_update_dict_nested(self):
+        @dataclass
+        class NestedSchema:
+            folders: dict[str, Config42] = field(
+                default_factory=lambda: {"placeholder": Config42()}
+            )
+
+        @dataclass
+        class SchemaWithNested:
+            nested: NestedSchema = field(default_factory=NestedSchema)
+
+        config = EYConfExtraFields(SchemaWithNested())
+
+        assert config.data.nested.folders["placeholder"].int_field == 42
+        for folder in config.data.nested.folders.values():
+            assert isinstance(folder, Config42)
+
+        config.update(
+            {
+                "nested": {
+                    "folders": {
+                        "config1": {"int_field": 1, "str_field": "One"},
+                        "config2": {"int_field": 2, "str_field": "Two"},
+                    }
+                }
+            }
+        )
+
+        assert config.data.nested.folders["config1"].int_field == 1
+        assert config.data.nested.folders["config1"].str_field == "One"
+        assert config.data.nested.folders["config2"].int_field == 2
+        assert config.data.nested.folders["config2"].str_field == "Two"
