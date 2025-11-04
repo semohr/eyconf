@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 from copy import deepcopy
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, fields, is_dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -94,7 +94,15 @@ class EYConfBase(Generic[D]):
             _current_path: list[str] = [],
         ):
             target_annotations = get_type_hints_resolve_namespace(target_type)
+
+            # Rewrite key, from alias to field name
+            alias_fields = {f.metadata["alias"]:f for f in fields(target_type) if "alias" in f.metadata}
+
             for key, value in update_data.items():
+                # resolve if key has an alias
+                if alias_field := alias_fields.get(key):
+                    key = alias_field.name
+
                 if hasattr(target, key):
                     # folders : dict[str, InboxFolder]
                     current_value = getattr(target, key)

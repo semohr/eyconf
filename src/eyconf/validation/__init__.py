@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, fields, is_dataclass
 from typing import TYPE_CHECKING, TypeVar, cast
 
 from eyconf.utils import dataclass_from_dict
@@ -62,6 +62,12 @@ def validate(data: D | dict, schema: type[D]) -> D:
     return dataclass_from_dict(schema, **data)
 
 
+def alias_to_key(dict, fields):
+    pass
+
+def key_to_alias(dict, fields):
+    pass
+
 def validate_json(data: DataclassInstance | dict, schema: dict) -> None:
     """Validate the provided data against the given schema.
 
@@ -83,6 +89,7 @@ def validate_json(data: DataclassInstance | dict, schema: dict) -> None:
     """
     if is_dataclass(data):
         data = asdict(data)
+        # TODO Replace alias recursively
 
     schema = allow_none_in_schema(schema)
     validator = Draft202012Validator(schema)  # type: ignore[bad-instantiation]
