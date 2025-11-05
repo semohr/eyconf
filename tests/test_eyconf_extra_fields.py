@@ -70,10 +70,10 @@ class TestEYConfExtraFields:
 
         config.update({"unknown_field": "I am unknown!"})
 
-        assert config.data.unknown_field == "I am unknown!"  # type: ignore[attr]
+        assert config.data.unknown_field == "I am unknown!"  # type: ignore[attr-defined]
         assert config._extra_data.unknown_field == "I am unknown!"
         with pytest.raises(AttributeError):
-            _ = config._data.non_existent_field  # type: ignore[attr]
+            _ = config._data.non_existent_field  # type: ignore[attr-defined]
 
     def test_update_dict(self):
         @dataclass

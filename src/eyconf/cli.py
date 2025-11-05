@@ -89,7 +89,7 @@ async def edit_config(Config: type[EYConf], *args, **kwargs):
     typer.echo(f"Opening configuration file: {path.absolute().as_posix()}")
     try:
         if os.name == "nt":  # Windows
-            os.startfile(path.absolute().as_posix())  # type: ignore[missing-attribute]
+            os.startfile(path.absolute().as_posix())  # type: ignore[attr-defined]
         elif os.name == "posix":  # macOS or Linux
             process = await asyncio.create_subprocess_exec(
                 *[

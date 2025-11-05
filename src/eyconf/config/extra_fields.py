@@ -57,9 +57,9 @@ class EYConfExtraFields(EYConfBase[D]):
                 f"Cannot set unknown attribute '{key}' on configuration."
             )
 
-        extra_data = self._extra_data
+        extra_data: AttributeDict = self._extra_data
         for path_part in _current_path:
-            extra_data: AttributeDict = getattr(extra_data, path_part)
+            extra_data = getattr(extra_data, path_part)
 
         if isinstance(value, dict):
             setattr(extra_data, key, AttributeDict(**value))

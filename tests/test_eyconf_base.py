@@ -116,8 +116,8 @@ class TestUpdate:
 
         assert conf_nested.data.nested.int_field == 100
         assert conf_nested.data.nested.str_field == "Updated nested value!"
-        assert conf_nested.data.nested_optional.int_field == 200  # type: ignore[union]
-        assert conf_nested.data.nested_optional.str_field == "Optional nested!"  # type: ignore[union]
+        assert conf_nested.data.nested_optional.int_field == 200  # type: ignore[union-attr]
+        assert conf_nested.data.nested_optional.str_field == "Optional nested!"  # type: ignore[union-attr]
         assert conf_nested.data.other_field == "Updated parent value!"
 
     def test_nested_partial(self, conf_nested: EYConfBase[ConfigNested]):
@@ -143,7 +143,7 @@ class TestUpdate:
         conf42.update({"int_field": 100, "new_field": "I am new!"})
 
         assert conf42.data.int_field == 100
-        assert conf42.data.new_field == "I am new!"  # type: ignore[attr]
+        assert conf42.data.new_field == "I am new!"  # type: ignore[attr-defined]
 
     def test_additional_fields_nested(self, conf_nested: EYConfBase[ConfigNested]):
         conf_nested.allow_additional_properties = True
@@ -153,8 +153,8 @@ class TestUpdate:
             }
         )
 
-        assert conf_nested.data.nested.new_nested_field.foo == "bar"  # type: ignore[attr]
-        assert isinstance(conf_nested.data.nested.new_nested_field, AttributeDict)  # type: ignore[attr]
+        assert conf_nested.data.nested.new_nested_field.foo == "bar"  # type: ignore[attr-defined]
+        assert isinstance(conf_nested.data.nested.new_nested_field, AttributeDict)  # type: ignore[attr-defined]
 
     def test_additional_fields_nested_deep(self, conf_nested: EYConfBase[ConfigNested]):
         conf_nested.allow_additional_properties = True
@@ -164,7 +164,7 @@ class TestUpdate:
                 "nested": {"d1": {"d2": {"d3": {"d4_field": "deep value!"}}}},
             }
         )
-        assert conf_nested.data.nested.d1.d2.d3.d4_field == "deep value!"  # type: ignore[attr]
+        assert conf_nested.data.nested.d1.d2.d3.d4_field == "deep value!"  # type: ignore[attr-defined]
 
 
 class TestOverwrite:
@@ -203,8 +203,8 @@ class TestOverwrite:
 
         assert conf_nested.data.nested.int_field == 100
         assert conf_nested.data.nested.str_field == "Overwritten nested!"
-        assert conf_nested.data.nested_optional.int_field == 200  # type: ignore[union]
-        assert conf_nested.data.nested_optional.str_field == "Optional nested!"  # type: ignore[union]
+        assert conf_nested.data.nested_optional.int_field == 200  # type: ignore[union-attr]
+        assert conf_nested.data.nested_optional.str_field == "Optional nested!"  # type: ignore[union-attr]
         assert conf_nested.data.other_field == "Overwritten parent!"
 
 
@@ -232,14 +232,14 @@ class TestReset:
                 "nested": {"int_field": 100, "str_field": "Updated nested value!"},
                 "nested_optional": {"int_field": 200, "str_field": "Optional nested!"},
                 "other_field": "Updated parent value!",
-                "extra_field": "I am extra!",  # type: ignore[attr]
+                "extra_field": "I am extra!",  # type: ignore[attr-defined]
             }
         )
 
         assert conf_nested.data.nested.int_field == 100
         assert conf_nested.data.nested.str_field == "Updated nested value!"
-        assert conf_nested.data.nested_optional.int_field == 200  # type: ignore[union]
-        assert conf_nested.data.nested_optional.str_field == "Optional nested!"  # type: ignore[union]
+        assert conf_nested.data.nested_optional.int_field == 200  # type: ignore[union-attr]
+        assert conf_nested.data.nested_optional.str_field == "Optional nested!"  # type: ignore[union-attr]
         assert conf_nested.data.other_field == "Updated parent value!"
 
         conf_nested.reset()

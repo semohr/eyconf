@@ -28,7 +28,7 @@ build-backend = "hatchling.build"
 
 
 [project.optional-dependencies]
-typed = ["pyrefly", "types-pyyaml"]
+typed = ["mypy", "types-pyyaml","types-jsonschema"]
 test = ["pytest", "pytest-cov>=5.0.0"]
 dev = ["ruff>=0.8.6", "pre-commit", "eyconf[test, cli]"]
 docs = [
@@ -75,5 +75,7 @@ log_level = "DEBUG"
 omit = ["*/tests/*"]
 exclude_also = ["raise NotImplementedError", "@(abc\\.)?abstractmethod"]
 
-[tool.pyrefly]
-project-includes = ["**/*.py*"]
+[tool.mypy]
+files = ["src/**/*.py", "tests/**/*.py"]
+check_untyped_defs = true
+exclude = ["docs/*"]

@@ -132,13 +132,14 @@ class TestDictStyleAccess:
         config = Config42()
 
         # Note that placing `assert isinstance(config, DictAccess)` here
-        # will make runtime type checkers error about the attribute access
+        # will make some runtime type checkers error about the attribute access
         # Once you place the assert, better stick to dict-style access
         # for the rest of the scope
+        assert isinstance(config, DictAccess)
+        assert isinstance(config["nested"], DictAccess)
+
         assert config.int_field == 42
         assert config.nested.str_field == "FortyTwo"
 
-        assert isinstance(config, DictAccess)
-        assert isinstance(config["nested"], DictAccess)
         assert config["int_field"] == 42
         assert config["nested"]["str_field"] == "FortyTwo"
