@@ -70,6 +70,7 @@ class EYConfBase(Generic[D]):
 
         # Will raise ConfigurationError if the data does not comply with the schema
         validate_json(data, self._json_schema)
+
         if is_dataclass(data):
             self._data = cast(D, data)
         else:
