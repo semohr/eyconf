@@ -1,12 +1,14 @@
-from eyconf.utils import AttributeDict, AccessProxy
+from eyconf.utils import AttributeDict, AccessProxy, dict_access, DictAccess
 from dataclasses import dataclass, field
 
 
+@dict_access
 @dataclass
 class Nested:
     str_field: str = "FortyTwo"
 
 
+@dict_access
 @dataclass
 class Config42:
     int_field: int = 42
@@ -121,3 +123,22 @@ class TestAccessProxy:
         assert proxy.foo == "bar"
 
         del proxy.foo  # type: ignore
+
+
+class TestDictStyleAccess:
+    """Test the @dict_access decorator functionality."""
+
+    def test_get_data(self):
+        config = Config42()
+
+        # Note that placing `assert isinstance(config, DictAccess)` here
+        # will make runtime type checkers error about the attribute access
+        # Once you place the assert, better stick to dict-style access
+        # for the rest of the scope
+        assert config.int_field == 42
+        assert config.nested.str_field == "FortyTwo"
+
+        assert isinstance(config, DictAccess)
+        assert isinstance(config["nested"], DictAccess)
+        assert config["int_field"] == 42
+        assert config["nested"]["str_field"] == "FortyTwo"

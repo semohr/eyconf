@@ -1,6 +1,7 @@
 import inspect
 import logging
 import sys
+from dataclasses import is_dataclass
 from typing import (
     Any,
     get_type_hints,
@@ -66,3 +67,8 @@ def _get_namespace(
         frame = frame.f_back
 
     return globalns, localns
+
+
+def is_dataclass_type(obj: Any) -> bool:
+    """Check if an object is a dataclass type (class), not an instance."""
+    return is_dataclass(obj) and isinstance(obj, type)
