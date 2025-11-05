@@ -65,8 +65,6 @@ def to_json_schema(
         if r:
             schema["required"].append(field_name)
 
-        # breakpoint()
-
     if check_schema:
         Draft202012Validator.check_schema(schema)
 
