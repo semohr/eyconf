@@ -22,7 +22,7 @@ maxdepth: 1
 ---
 
 getting-started
-cli
+advanced-usage
 contribution
 faq
 references

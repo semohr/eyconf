@@ -17,7 +17,9 @@
 ## Core concepts
 
 The main idea of EYConf is to define your configuration schema using one or 
-multiple strongly typed dataclasses.
+multiple strongly typed dataclasses. This is similar to how Pydantic works, but
+way less heavy weight. EYConf uses Python's built-in dataclasses and the jsonschema
+library to perform validation.
 
 ### 1. Define Your Schema
 
@@ -26,7 +28,6 @@ Start by defining your configuration structure using dataclasses:
 ```python
 
 from dataclasses import dataclass
-from typing import Optional
 
 @dataclass
 class Transport:
@@ -40,7 +41,7 @@ class Transport:
 @dataclass
 class Other:
     """Other configuration options"""
-    bar: Optional[int]
+    bar: int | None = None
 
 @dataclass
 class ConfigSchema:
@@ -116,40 +117,14 @@ config.refresh()
 # 'not_a_number' is not of type 'integer' in section 'transport.port'
 ```
 
-## Advanced Usage
+:::{dropdown} Full example
 
-
-### Change Configuration File Path
-
-To change the path of the configuration file, you can set the `EYCONF_CONFIG_FILE` environment variable to the desired path before creating the {py:class}`~eyconf.config.EYConf` instance:
-
-```bash
-export EYCONF_CONFIG_FILE="/path/to/your/config.yaml"
-```
-
-Alternatively, you can pass override the {py:meth}`~eyconf.config.EYConf.get_file` method in a subclass of {py:class}`~eyconf.config.EYConf`. We recommend this approach if you want to have more control over the configuration file location, this also allows you to add helper methods specific to your application configuration.
+For a minimal working example, see below:
 
 ```python
+# your_project/config.py
 from eyconf import EYConf
-class CustomConfig(EYConf):
-    @staticmethod
-    def get_file() -> Path:
-        return Path("/path/to/your/config.yaml").expanduser().resolve()
-config = CustomConfig(ConfigSchema)
-```
-
-{ref}`Why can I not just provide a path to the constructor? <faq:why-can-i-not-just-provide-a-path-to-the-constructor>`
-
-
-
-## Without YAML File / Memory Only Validation
-
-Sometimes you might want to create a configuration without creating or loading a YAML file. This is possible be using
-the {py:class}`~eyconf.config.EYConfBase` base class. We still expect you to provide a schema using dataclasses.
-
-```python
-from eyconf import EYConfBase
-
+from dataclasses import dataclass
 
 @dataclass
 class Transport:
@@ -168,15 +143,7 @@ class ConfigSchema:
     """
     transport: Transport
 
-# Loaded from memory only
-config = {
-    "transport": {
-        "host": "custom.example.com",
-        "port": 993,
-        "username": "custom_user",
-        "password": "custom_password",
-        "use_ssl": True,
-    },
-}
-config = EYConfBase(data=config, schema=ConfigSchema)
+config = EYConf(ConfigSchema)
+
 ```
+:::
