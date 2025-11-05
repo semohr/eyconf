@@ -199,13 +199,22 @@ def _dataclass_from_dict_inner(target_type: type, data: Any) -> Any:
     # Handle dict data - convert to dataclass
     if isinstance(data, dict) and is_dataclass(target_type):
         field_types = get_type_hints(target_type, include_extras=False)
-
         found_fields = {}
-        for field_name, field_type in field_types.items():
-            if field_name in data:
-                found_fields[field_name] = _dataclass_from_dict_inner(
-                    field_type, data[field_name]
-                )
+        for f in fields(target_type):
+            field_name = f.name
+            field_type = field_types.get(field_name, f.type)
+            alias = f.metadata.get("alias") if hasattr(f, "metadata") else None
+            # Prefer alias if present, else field name
+            if alias and alias in data:
+                value = data[alias]
+            elif field_name in data:
+                # TODO: Decide do we want to allow the attr_names as keys in dicts?
+                value = data[field_name]
+            else:
+                # TODO: We might need to allow this to enable behaviour when
+                # allow_additional = True
+                continue
+            found_fields[field_name] = _dataclass_from_dict_inner(field_type, value)
 
         try:
             return target_type(**found_fields)  # type: ignore[bad-instantiation]
