@@ -71,11 +71,6 @@ really need or want to.
 
 To do so you can either use our utility decorator `@dict_access` or create a `__getitem__` method in your dataclass to convert your dataclass schema into a dictionary-like object:
 
-
-::::{tab-set}
-
-:::{tab-item} `@dict_access` decorator
-
 ```python
 from eyconf.utils import dict_access
 
@@ -85,22 +80,6 @@ class ConfigSchema:
     fortytwo: int = 42
 
 ```
-:::
-
-:::{tab-item} `__getitem__` method
-
-```python
-@dataclass
-class ConfigSchema:
-    fortytwo: int = 42
-
-    def __getitem__(self, item):
-        return getattr(self, item)
-
-```
-:::
-
-::::
 
 This now allows you to access configuration values using dict style access:
 
@@ -112,6 +91,10 @@ config = EYConf(ConfigSchema)
 assert isinstance(config.data, DictAccess)
 print(config.data["fortytwo"])  # Outputs: 42
 ```
+
+:::{admonition} Warning
+If you are using nested dataclasses in your configuration schema, make sure to apply the `@dict_access` decorator to all nested dataclasses as well. Otherwise, dict style access will not work for the nested dataclasses.
+:::
 
 
 ## Typer integration
