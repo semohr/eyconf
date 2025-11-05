@@ -64,6 +64,56 @@ config = {
 config = EYConfBase(data=config, schema=ConfigSchema)
 ```
 
+## Dict style access
+
+While we do not recommend using dict style access to configuration values, as you lose type safety and autocompletion, it is still possible to access configuration values using dict style access if you 
+really need or want to.
+
+To do so you can either use our utility decorator `@dict_access` or create a `__getitem__` method in your dataclass to convert your dataclass schema into a dictionary-like object:
+
+
+::::{tab-set}
+
+:::{tab-item} `@dict_access` decorator
+
+```python
+from eyconf.utils import dict_access
+
+@dict_access
+@dataclass
+class ConfigSchema:
+    fortytwo: int = 42
+
+```
+:::
+
+:::{tab-item} `__getitem__` method
+
+```python
+@dataclass
+class ConfigSchema:
+    fortytwo: int = 42
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
+```
+:::
+
+::::
+
+This now allows you to access configuration values using dict style access:
+
+```python
+from eyconf import EYConf
+from eyconf.utils import DictAccess
+config = EYConf(ConfigSchema)
+
+assert isinstance(config.data, DictAccess)
+print(config.data["fortytwo"])  # Outputs: 42
+```
+
+
 ## Typer integration
 
 The `eyconf.cli` module provides a convenient way to create a command-line interface (CLI) for managing configuration files using the [typer library](https://typer.tiangolo.com/). This can be particularly useful when you want to provide users with the ability to interact and modify configuration files via the terminal.

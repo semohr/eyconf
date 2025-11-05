@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0]
+
+* Moved some of the getting-started information into the advanced-usage guide.
+* Added information on how to use the `@dict_access` decorator for dict-style access to configuration values.
+
 ## [0.3.3]
 
 * Empty AttributeDicts are no longer considered truthy. An AttributeDict with no keys will evaluate to False.

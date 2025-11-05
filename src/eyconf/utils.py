@@ -4,7 +4,16 @@ import logging
 from copy import deepcopy
 from dataclasses import asdict, dataclass, is_dataclass
 from types import NoneType, UnionType
-from typing import TYPE_CHECKING, Any, Generic, TypeVar, Union, get_type_hints
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Generic,
+    Protocol,
+    TypeVar,
+    Union,
+    get_type_hints,
+    runtime_checkable,
+)
 
 from typing_extensions import get_args, get_origin
 
@@ -222,3 +231,42 @@ def _dataclass_from_dict_inner(target_type: type, data: Any) -> Any:
 
     # Handle primitive types
     return data
+
+
+T = TypeVar("T")
+
+
+@runtime_checkable
+class DictAccess(Protocol):
+    """Protocol for dict-like access."""
+
+    def __getitem__(self, key: str) -> Any: ...  # noqa: D105
+
+
+def dict_access(cls: type[T]) -> type[T]:
+    """Class decorator to add dict-like access to class attributes.
+
+    Can be used to add `dict`-like access to any class, allowing
+    attribute access via the `obj['attribute']` syntax.
+
+    Use with care, dict-style access does not provide any type safety
+    and will not be checked by static type checkers.
+
+    Usage:
+
+    ```python
+    @dict_access
+    class MySchema:
+        forty_two: int = 42
+
+    obj = MySchema()
+    assert isinstance(obj, DictAccess)
+    print(obj['forty_two'])  # Outputs: 42
+    ```
+    """
+
+    def __getitem__(self, key: str) -> Any:
+        return getattr(self, key)
+
+    setattr(cls, "__getitem__", __getitem__)
+    return cls
