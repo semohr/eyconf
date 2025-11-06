@@ -207,7 +207,7 @@ def __field_to_lines(field: Field[Any], field_type: type, indent=0) -> list[Line
     # Extract docstring from annotated
     if origin is Annotated:
         annotations = [arg for arg in args if isinstance(arg, str)]
-        args = [arg for arg in args if not isinstance(arg, str)]
+        args = tuple(arg for arg in args if not isinstance(arg, str))
         for annotation in annotations:
             lines += __split_docstring(annotation, indent=indent)
 
@@ -215,7 +215,9 @@ def __field_to_lines(field: Field[Any], field_type: type, indent=0) -> list[Line
     is_optional = False
     if origin is UnionType or origin is Union:
         is_optional = type(None) in args or NoneType in args
-        args = [arg for arg in args if arg is not type(None) and arg is not NoneType]
+        args = tuple(
+            arg for arg in args if arg is not type(None) and arg is not NoneType
+        )
 
     # Parse default
     default_missing = True
