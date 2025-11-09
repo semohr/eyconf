@@ -298,6 +298,20 @@ def dict_access(cls: type[T]) -> type[T]:
     """
 
     def __getitem__(self, key: str) -> Any:
+        # for dict access we _only_ want to allow the aliases,
+        # not the attribute names!
+        aliases = {
+            f.metadata["alias"]: f.name for f in fields(self) if "alias" in f.metadata
+        }
+        if key in aliases.keys():
+            return getattr(self, aliases[key])
+        elif key in aliases.values():
+            _suggestion = next((k for k, v in aliases.items() if v == key), None)
+            raise KeyError(
+                "If an alias is defined, subscripting is only allowed "
+                + f"using the alias. Use ['{_suggestion}'] instead of ['{key}']!"
+            )
+
         return getattr(self, key)
 
     setattr(cls, "__getitem__", __getitem__)
