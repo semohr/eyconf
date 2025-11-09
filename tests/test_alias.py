@@ -1,17 +1,16 @@
-
-
 from __future__ import annotations
 
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field
 
-from typing import Any, Optional, Type, TypeVar, runtime_checkable
-from typing_extensions import  Protocol
+from typing import Any, Optional, TypeVar
 import pytest
 from eyconf import EYConfBase
 from eyconf.utils import asdict_with_aliases
 
 
 T = TypeVar("T", bound=Any)
+
+
 @dataclass
 class Config42:
     int_field: int = 42
@@ -40,9 +39,10 @@ class AliasConfig:
     attr_field: int = field(metadata={"alias": "dict_field"})
     str_field: str = "FortyTwo!"
 
+
 @dataclass
 class NestedAliasConfig:
-    nested: AliasConfig = field(default_factory= lambda : AliasConfig(attr_field=43))
+    nested: AliasConfig = field(default_factory=lambda: AliasConfig(attr_field=43))
     other_field: str = "Hello, World!"
 
 
@@ -59,10 +59,9 @@ class TestAlias:
         dump = asdict_with_aliases(config)
         assert dump["dict_field"] == 42
 
-        nested_config= NestedAliasConfig()
+        nested_config = NestedAliasConfig()
         nested_dump = asdict_with_aliases(nested_config)
         assert nested_dump["nested"]["dict_field"] == 43
-
 
     def test_dict_alias_update(self):
         config = EYConfBase(AliasConfig(attr_field=42))
@@ -73,10 +72,11 @@ class TestAlias:
 
         assert config.data.attr_field == 16
 
-
     def test_constructor_alias(self):
         # Constructor with dict using alias
-        config = EYConfBase({"dict_field": 100, "str_field": "Test"}, schema=AliasConfig)
+        config = EYConfBase(
+            {"dict_field": 100, "str_field": "Test"}, schema=AliasConfig
+        )
 
         assert config.data.attr_field == 100
         assert config.data.str_field == "Test"

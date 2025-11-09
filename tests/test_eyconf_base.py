@@ -14,10 +14,12 @@ class Config42:
     int_field: int = 42
     str_field: str = "FortyTwo!"
 
+
 @dataclass
 class Config42Required:
     int_field: int
     str_field: str = "FortyTwo!"
+
 
 @dataclass
 class ConfigNested:
