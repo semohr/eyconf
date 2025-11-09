@@ -406,7 +406,7 @@ def _asdict_inner(obj, dict_factory):
         if hasattr(type(obj), "default_factory"):
             # obj is a defaultdict, which has a different constructor from
             # dict as it requires the default_factory as its first arg.
-            result = type(obj)(getattr(obj, "default_factory"))
+            result = type(obj)(getattr(obj, "default_factory"))  # type: ignore
             for k, v in obj.items():
                 result[_asdict_inner(k, dict_factory)] = _asdict_inner(v, dict_factory)
             return result
