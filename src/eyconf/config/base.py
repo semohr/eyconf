@@ -74,7 +74,9 @@ class EYConfBase(Generic[D]):
         if is_dataclass(data):
             self._data = cast(D, data)
         else:
-            self._data = dataclass_from_dict(self._schema, data, allow_additional=allow_additional_properties)
+            self._data = dataclass_from_dict(
+                self._schema, data, allow_additional=allow_additional_properties
+            )
 
     def validate(self):
         """Validate the current data against the schema."""
@@ -96,7 +98,11 @@ class EYConfBase(Generic[D]):
             target_annotations = get_type_hints_resolve_namespace(target_type)
 
             # Rewrite key, from alias to field name
-            alias_fields = {f.metadata["alias"]:f for f in fields(target_type) if "alias" in f.metadata}
+            alias_fields = {
+                f.metadata["alias"]: f
+                for f in fields(target_type)
+                if "alias" in f.metadata
+            }
 
             for key, value in update_data.items():
                 # resolve if key has an alias
