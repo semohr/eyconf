@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from collections.abc import Sequence as ABCSequence
 from dataclasses import fields, is_dataclass
-from functools import lru_cache
+from functools import cache
 from types import NoneType, UnionType
 from typing import Annotated, Any, Literal, Union, get_args, get_origin
 
