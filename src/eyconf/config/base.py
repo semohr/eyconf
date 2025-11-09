@@ -74,7 +74,7 @@ class EYConfBase(Generic[D]):
         if is_dataclass(data):
             self._data = cast(D, data)
         else:
-            self._data = dataclass_from_dict(self._schema, data)
+            self._data = dataclass_from_dict(self._schema, data, allow_additional=allow_additional_properties)
 
     def validate(self):
         """Validate the current data against the schema."""

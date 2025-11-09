@@ -168,15 +168,19 @@ def merge_dicts(a: dict, b: dict, path=[]):
     return a
 
 
-def dataclass_from_dict(in_type: type[D], data: dict) -> D:
+def dataclass_from_dict(
+    in_type: type[D], data: dict, allow_additional: bool = False
+) -> D:
     """Convert a dict to a dataclass instance of the given type. Always returns a dataclass."""
-    result = _dataclass_from_dict_inner(in_type, data)
+    result = _dataclass_from_dict_inner(in_type, data, allow_additional)
     if result is None:
         raise ValueError(f"Could not parse data {data} with type {in_type}")
     return result
 
 
-def _dataclass_from_dict_inner(target_type: type, data: Any) -> Any:
+def _dataclass_from_dict_inner(
+    target_type: type, data: Any, allow_additional: bool = False
+) -> Any:
     """Inner function that handles Union types and may return None."""
     # Handle Union types
     origin = get_origin(target_type)
@@ -191,7 +195,7 @@ def _dataclass_from_dict_inner(target_type: type, data: Any) -> Any:
             if arg is types.NoneType or arg is type(None):
                 continue
             try:
-                return _dataclass_from_dict_inner(arg, data)
+                return _dataclass_from_dict_inner(arg, data, allow_additional)
             except (ValueError, TypeError, KeyError):
                 continue
         return None
@@ -200,24 +204,39 @@ def _dataclass_from_dict_inner(target_type: type, data: Any) -> Any:
     if isinstance(data, dict) and is_dataclass(target_type):
         field_types = get_type_hints(target_type, include_extras=False)
         found_fields = {}
+        additional_fields = {}
+
+        aliased_fields = {}  # alias to name, only aliased fields
+        field_types_to_use = {}  # name to type, all fields
         for f in fields(target_type):
-            field_name = f.name
-            field_type = field_types.get(field_name, f.type)
-            alias = f.metadata.get("alias") if hasattr(f, "metadata") else None
-            # Prefer alias if present, else field name
-            if alias and alias in data:
-                value = data[alias]
-            elif field_name in data:
-                # TODO: Decide do we want to allow the attr_names as keys in dicts?
-                value = data[field_name]
+            if hasattr(f, "metadata"):
+                aliased_fields[f.metadata.get("alias")] = f.name
+            field_types_to_use[f.name] = field_types.get(f.name, f.type)
+
+        for key, value in data.items():
+            if key in aliased_fields.keys():
+                key = aliased_fields[key]
+                found_fields[key] = _dataclass_from_dict_inner(
+                    field_types_to_use[key], value, allow_additional
+                )
+            elif key in field_types_to_use.keys():
+                found_fields[key] = _dataclass_from_dict_inner(
+                    field_types_to_use[key], value, allow_additional
+                )
             else:
-                # TODO: We might need to allow this to enable behaviour when
-                # allow_additional = True
-                continue
-            found_fields[field_name] = _dataclass_from_dict_inner(field_type, value)
+                additional_fields[key] = value
 
         try:
-            return target_type(**found_fields)  # type: ignore[bad-instantiation]
+            res = target_type(**found_fields)  # type: ignore[bad-instantiation]
+            if allow_additional:
+                for key, value in additional_fields.items():
+                    setattr(res, key, value)
+            elif len(additional_fields) > 0:
+                raise TypeError(
+                    f"Found additional fields {list(additional_fields.keys())}. "
+                    + "Consider setting `allow_additional=True`"
+                )
+            return res
         except TypeError as e:
             raise ValueError(f"Failed to create {target_type.__name__}: {e}")
 
@@ -225,9 +244,9 @@ def _dataclass_from_dict_inner(target_type: type, data: Any) -> Any:
     if isinstance(data, dict) and get_origin(target_type) is dict:
         key_type, value_type = get_args(target_type)
         return {
-            _dataclass_from_dict_inner(key_type, k): _dataclass_from_dict_inner(
-                value_type, v
-            )
+            _dataclass_from_dict_inner(
+                key_type, k, allow_additional
+            ): _dataclass_from_dict_inner(value_type, v, allow_additional)
             for k, v in data.items()
         }
 
@@ -235,7 +254,10 @@ def _dataclass_from_dict_inner(target_type: type, data: Any) -> Any:
     if isinstance(data, (list, tuple)):
         if hasattr(target_type, "__args__") and target_type.__args__:
             elem_type = target_type.__args__[0]
-            return [_dataclass_from_dict_inner(elem_type, item) for item in data]
+            return [
+                _dataclass_from_dict_inner(elem_type, item, allow_additional)
+                for item in data
+            ]
         else:
             return data
 
