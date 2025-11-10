@@ -15,7 +15,6 @@ from typing import (
     TYPE_CHECKING,
     Annotated,
     Any,
-    Dict,
     Union,
     get_args,
     get_origin,
@@ -232,7 +231,7 @@ def __field_to_lines(field: Field[Any], field_type: type, indent=0) -> list[Line
         default_value = field.default
         default_missing = False
 
-    if origin in [dict, Dict] and default_missing:
+    if origin in [dict, dict] and default_missing:
         default_value = {}
         default_missing = False
 

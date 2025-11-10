@@ -114,7 +114,7 @@ class EYConf(EYConfBase[D]):
             )
 
         # Load the config file
-        with open(self.path, "r") as file:
+        with open(self.path) as file:
             data = yaml.safe_load(file)
 
         # Will raise ConfigurationError if the data does not comply with the schema

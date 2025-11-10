@@ -1,10 +1,11 @@
-from types import NoneType
-from typing import TYPE_CHECKING, Sequence, Union
+from __future__ import annotations
 
-from typing_extensions import Final
+from collections.abc import Sequence
+from types import NoneType
+from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
-    Primitives = Union[int, float, str, bool, None]
+    Primitives = int | float | str | bool | None
 
 
 primitive_types: Final[Sequence[type[object]]] = [

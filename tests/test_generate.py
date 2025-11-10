@@ -2,7 +2,7 @@
 # from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Annotated, Literal, Optional, Union
+from typing import Annotated, Literal, Optional
 
 import logging
 import pytest
@@ -105,9 +105,9 @@ class TestGenerateDefault:
     def test_optional(self):
         @dataclass
         class Optionals:
-            int_field: Optional[int]
+            int_field: int | None
             str_field: str | None
-            other_field: Union[str, None]
+            other_field: str | None
 
         yaml_str = dataclass_to_yaml(Optionals)
         print(yaml_str)
@@ -121,9 +121,9 @@ class TestGenerateDefault:
     def test_optional_with_default(self):
         @dataclass
         class OptionalsWithDefault:
-            int_field: Optional[int] = 42
+            int_field: int | None = 42
             str_field: str | None = "test"
-            other_field: Union[str, None] = None
+            other_field: str | None = None
 
         yaml_str = dataclass_to_yaml(OptionalsWithDefault)
         assert yaml_str == "int_field: 42\nstr_field: test\nother_field: null"
@@ -192,7 +192,7 @@ class TestGenerateDefault:
 
         @dataclass
         class Lists:
-            int_list: Optional[list[int]]
+            int_list: list[int] | None
             str_list: list[str] = field(default_factory=lambda: ["a", "b", "c"])
 
         yaml_str = dataclass_to_yaml(Lists)
@@ -212,7 +212,7 @@ class TestGenerateDefault:
             int_dict: dict[str, int] = field(
                 default_factory=lambda: {"one": 1, "two": 2, "three": 3}
             )
-            str_dict: Optional[dict[str, str]] = None
+            str_dict: dict[str, str] | None = None
 
         yaml_str = dataclass_to_yaml(DictSchema)
         print(yaml_str)

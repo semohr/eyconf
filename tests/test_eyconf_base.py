@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from typing import Optional
 import pytest
 from eyconf import EYConfBase
 
@@ -19,7 +18,7 @@ class Config42:
 @dataclass
 class ConfigNested:
     nested: Config42 = field(default_factory=Config42)
-    nested_optional: Optional[Config42] = None
+    nested_optional: Config42 | None = None
     other_field: str = "Hello, World!"
 
 

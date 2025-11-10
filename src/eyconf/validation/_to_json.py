@@ -1,16 +1,9 @@
+from collections.abc import Sequence
 from collections.abc import Sequence as ABCSequence
 from dataclasses import is_dataclass
-from functools import lru_cache
+from functools import cache
 from types import NoneType, UnionType
-from typing import (
-    Any,
-    Dict,
-    Literal,
-    Sequence,
-    Union,
-    get_args,
-    get_origin,
-)
+from typing import Any, Literal, Union, get_args, get_origin
 
 from jsonschema import Draft202012Validator
 from typing_extensions import NotRequired
@@ -18,10 +11,13 @@ from typing_extensions import NotRequired
 from eyconf.constants import primitive_type_mapping
 from eyconf.type_utils import get_type_hints_resolve_namespace
 
+SchemaType = dict[str, Any] | dict[str, str] | dict[Any, Any]
+
+
 __all__ = ["to_json_schema"]
 
 
-@lru_cache(maxsize=None)
+@cache
 def to_json_schema(
     type: type,
     check_schema: bool = True,
@@ -69,13 +65,6 @@ def to_json_schema(
     return schema
 
 
-SchemaType = Union[
-    dict[str, Any],
-    dict[str, str],
-    dict[Any, Any],
-]
-
-
 def __convert_type_to_schema(
     field_type: type,
     **kwargs,
@@ -121,12 +110,6 @@ def __convert_type_to_schema(
         if NoneType in allowed_types:
             is_required = False
             allowed_types.remove(NoneType)
-        if None in allowed_types:
-            is_required = False
-            allowed_types.remove(None)
-        if type(None) in allowed_types:
-            is_required = False
-            allowed_types.remove(type(None))
 
         if len(allowed_types) > 1:
             return {
@@ -135,11 +118,12 @@ def __convert_type_to_schema(
                     for allowed_type in allowed_types
                 ]
             }, is_required
-        elif len(allowed_types) == 1:
+        else:
+            # case length == 1
+            # Another case is impossible as Union must have at least one type and
+            # get simplified beforehand if it does not Union[int] -> int
             t, _ = __convert_type_to_schema(allowed_types.pop(), **kwargs)
             return t, is_required
-        else:
-            raise ValueError("Union type must have at least one type!")
 
     # Handle sequence types
     if origin in [list, set, tuple, Sequence, ABCSequence]:
@@ -150,14 +134,14 @@ def __convert_type_to_schema(
 
     # Handle TypedDict and dataclasses
     try:
-        if issubclass(field_type, Dict) or is_dataclass(field_type):
+        if issubclass(field_type, dict) or is_dataclass(field_type):
             return to_json_schema(field_type, **kwargs), is_required
     except TypeError:
         # Throws an error in case of a type that is not a class
         pass
 
     # Handle Dicts - arbitrary keys with typed values
-    if origin in [dict, Dict]:
+    if origin in [dict, dict]:
         key_type, value_type = get_args(field_type)
         if key_type is not str:
             raise ValueError("Only string keys are supported in dict types")

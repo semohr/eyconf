@@ -11,11 +11,11 @@ from typing import (
     Protocol,
     TypeVar,
     Union,
+    get_args,
+    get_origin,
     get_type_hints,
     runtime_checkable,
 )
-
-from typing_extensions import get_args, get_origin
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -66,7 +66,7 @@ class AttributeDict:
                 result[key] = value
         return result
 
-    def __deepcopy__(self, memo: dict) -> "AttributeDict":
+    def __deepcopy__(self, memo: dict) -> AttributeDict:
         """Create a deep copy of the AttributeDict."""
         # Avoid infinite recursion with memo
         if id(self) in memo:

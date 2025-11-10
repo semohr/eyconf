@@ -3,13 +3,11 @@ from dataclasses import fields
 from pprint import pprint
 from typing import (
     Any,
-    Dict,
     Literal,
     Optional,
-    Sequence,
     TypedDict,
-    Union,
 )
+from collections.abc import Sequence
 from typing_extensions import NotRequired
 import pytest
 from eyconf.type_utils import get_type_hints_resolve_namespace
@@ -131,8 +129,8 @@ class TestToSchema:
     def test_optional(self, as_dataclass, allow_additional):
         @dataclass
         class Schema:
-            foo: Optional[str]
-            bar: Optional[int]
+            foo: str | None
+            bar: int | None
             baz: float
 
         if not as_dataclass:
@@ -188,9 +186,9 @@ class TestToSchema:
         @dataclass
         class NestedTyped:
             dict1: Dict1
-            dict_opt: Optional[Dict1]
+            dict_opt: Dict1 | None
             dict_uni: Dict1 | str
-            baz: Optional[float]
+            baz: float | None
 
         if not as_dataclass:
             NestedTyped = dataclass_to_typeddict(NestedTyped)  # type: ignore
@@ -227,7 +225,7 @@ class TestToSchema:
         @dataclass
         class Schema:
             foo: list[str]
-            bar: Optional[Sequence[int]]
+            bar: Sequence[int] | None
 
         if not as_dataclass:
             Schema = dataclass_to_typeddict(Schema)  # type: ignore
@@ -252,7 +250,7 @@ class TestToSchema:
     def test_dicts(self, as_dataclass, allow_additional):
         @dataclass
         class Schema:
-            foo: Dict[str, int]
+            foo: dict[str, int]
             bar: dict[str, str]
 
         if not as_dataclass:
@@ -290,7 +288,7 @@ class TestToSchema:
 
         @dataclass
         class Outer:
-            outer: Dict[str, Inner]
+            outer: dict[str, Inner]
 
         if not as_dataclass:
             Outer = dataclass_to_typeddict(Outer)  # type: ignore
@@ -372,7 +370,7 @@ class TestToSchema:
 
         @dataclass
         class UnionNone:
-            foo: Union[None, None]
+            foo: Optional[None]  # noqa: UP045
 
         schema = to_json_schema(UnionNone)
         assert schema == {
@@ -394,6 +392,17 @@ class TestToSchema:
 
         assert schema is schema2
 
+    def test_non_str_dict(self):
+        @dataclass
+        class Schema:
+            foo: dict[int, str]
+
+        with pytest.raises(
+            ValueError,
+            match="Only string keys are supported in dict types",
+        ):
+            to_json_schema(Schema)
+
 
 # This function converts a dataclass to a TypedDict
 def dataclass_to_typeddict(dc_cls: type):
@@ -402,7 +411,7 @@ def dataclass_to_typeddict(dc_cls: type):
     type_hints = get_type_hints_resolve_namespace(dc_cls)
 
     # Extract the fields and their types
-    typeddict_fields: Dict = {
+    typeddict_fields: dict = {
         field.name: type_hints[field.name] for field in fields(dc_cls)
     }
 

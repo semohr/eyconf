@@ -49,9 +49,10 @@ packages = ["src/eyconf"]
 
 [tool.ruff]
 include = ["pyproject.toml", "src/**/*.py", "tests/**/*.py"]
+target-version = "py310"
 
 [tool.ruff.lint]
-select = ["I", "D", "F"]
+select = ["I", "D", "F", "UP"]
 ignore = ["D104", "D100"]
 fixable = ["ALL"]
 
