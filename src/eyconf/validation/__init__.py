@@ -6,7 +6,8 @@ import logging
 from dataclasses import asdict, is_dataclass
 from typing import TYPE_CHECKING, TypeVar, cast
 
-from eyconf.utils import asdict_with_aliases, dataclass_from_dict
+from eyconf.as_dict import asdict_with_aliases
+from eyconf.utils import dataclass_from_dict
 
 log = logging.getLogger(__name__)
 
