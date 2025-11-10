@@ -80,3 +80,10 @@ class TestEYConfFile:
         tmp_config_path.unlink()
         with pytest.raises(FileNotFoundError):
             conf.reset()
+
+    def test_repr(self, tmp_config_path):
+        conf = EYConf(Config42)
+        repr_str = repr(conf)
+        assert "EYConf" in repr_str
+        assert "int_field" in repr_str
+        assert "str_field" in repr_str

@@ -303,3 +303,66 @@ class TestConverters:
     def test_to_yaml(self, conf42: EYConfBase[Config42]):
         expected_yaml = "int_field: 42\nstr_field: FortyTwo!"
         assert conf42.to_yaml() == expected_yaml
+
+    def test_update_additional_property_list(self, conf42: EYConfBase[Config42]):
+        """Test updating additional list properties"""
+        conf42.allow_additional_properties = True
+
+        conf42.update({"extra_list": [1, 2, 3]})
+        conf42.update({"extra_list": ["a", "b", "c"]})
+
+        assert conf42.data.extra_list == ["a", "b", "c"]  # type: ignore[attr-defined]
+
+    def test_error_without_additional_properties(self, conf42: EYConfBase[Config42]):
+        """Test that updating additional properties without allowing them raises an error"""
+        with pytest.raises(AttributeError):
+            conf42.update({"extra_field": "not allowed"})
+
+
+class TestPrintingUtils:
+    @pytest.mark.parametrize(
+        "fixture_name,expected_lines",
+        [
+            ("conf42", ["  int_field: 42", "  str_field: FortyTwo!"]),
+            (
+                "conf_nested",
+                ["  nested:", "    int_field: 42", "  other_field: Hello, World!"],
+            ),
+        ],
+    )
+    def test_str_formats_data(self, fixture_name, expected_lines, request):
+        """Test that __str__ properly formats configuration data"""
+        conf = request.getfixturevalue(fixture_name)
+        str_output = str(conf)
+
+        for expected_line in expected_lines:
+            assert expected_line in str_output
+
+    def test_repr_includes_object_info_and_data(self, conf42: EYConfBase[Config42]):
+        """Test that __repr__ includes basic object info and formatted data"""
+        repr_str = repr(conf42)
+
+        # Basic object info
+        assert repr_str.startswith("<EYConfBase object at 0x")
+        # Delegates to __str__ for data
+        assert "int_field: 42" in repr_str
+
+    @pytest.mark.parametrize(
+        "test_data,expected",
+        [
+            ({"key": "value"}, ["key: value"]),
+            ({"nested": {"inner": "val"}}, ["nested:", "    inner: val"]),
+            ({}, []),
+        ],
+    )
+    def test_pretty_format_basic_cases(
+        self, test_data, expected, conf42: EYConfBase[Config42]
+    ):
+        """Test _pretty_format with basic cases"""
+        formatted = conf42._pretty_format(test_data)
+
+        if expected:
+            for line in expected:
+                assert line in formatted
+        else:
+            assert formatted == ""

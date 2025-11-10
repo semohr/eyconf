@@ -357,24 +357,6 @@ def __is_custom_docstring(dataclass_obj):
     return re.match(default_docstring_pattern, dataclass_obj.__doc__) is None
 
 
-def __is_primitive_type(t: Any) -> bool:
-    """Check if the field type is supported.
-
-    Parameters
-    ----------
-    field : Field
-        The field to check.
-
-    Returns
-    -------
-    bool
-        True if the field type is supported, False otherwise.
-    """
-    if t in primitive_types:
-        return True
-    return False
-
-
 def __is_primitive_instance(t: Any) -> bool:
     """Check if the field type is a primitive instance.
 

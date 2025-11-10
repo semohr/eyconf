@@ -94,9 +94,7 @@ class EYConfBase(Generic[D]):
             _current_path: list[str] = [],
         ):
             target_annotations = get_type_hints_resolve_namespace(target_type)
-            # breakpoint()
             for key, value in update_data.items():
-                # breakpoint()
                 if hasattr(target, key):
                     # folders : dict[str, InboxFolder]
                     current_value = getattr(target, key)

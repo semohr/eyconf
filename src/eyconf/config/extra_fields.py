@@ -52,11 +52,6 @@ class EYConfExtraFields(EYConfBase[D]):
         return data
 
     def _update_additional(self, target, key, value: Any, _current_path: list[str]):
-        if not self.allow_additional_properties:
-            raise AttributeError(
-                f"Cannot set unknown attribute '{key}' on configuration."
-            )
-
         extra_data: AttributeDict = self._extra_data
         for path_part in _current_path:
             extra_data = getattr(extra_data, path_part)

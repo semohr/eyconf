@@ -138,3 +138,9 @@ class TestEYConfExtraFields:
         assert config.data.nested.folders["config1"].str_field == "One"
         assert config.data.nested.folders["config2"].int_field == 2
         assert config.data.nested.folders["config2"].str_field == "Two"
+
+    def test_update_unknown_nested(self):
+        config = EYConfExtraFields(Config42())
+
+        config.update({"level_one": {"level_two": {"level_three": "Deep Value"}}})
+        assert config.data.level_one.level_two.level_three == "Deep Value"  # type: ignore[attr-defined]
