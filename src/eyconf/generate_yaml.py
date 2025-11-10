@@ -15,7 +15,6 @@ from typing import (
     TYPE_CHECKING,
     Annotated,
     Any,
-    Union,
     get_args,
     get_origin,
 )
@@ -214,7 +213,7 @@ def __field_to_lines(field: Field[Any], field_type: type, indent=0) -> list[Line
 
     # Check if field is optional
     is_optional = False
-    if origin is UnionType or origin is Union:
+    if origin is UnionType:
         is_optional = type(None) in args or NoneType in args
         args = tuple(
             arg for arg in args if arg is not type(None) and arg is not NoneType

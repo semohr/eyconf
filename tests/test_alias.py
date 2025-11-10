@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 from typing import Any, TypeVar
 import pytest
 from eyconf import EYConfBase
-from eyconf.utils import DictAccess, asdict_with_aliases, dict_access
-
+from eyconf.utils import DictAccess, dict_access
+from eyconf.as_dict import asdict_with_aliases
 
 T = TypeVar("T", bound=Any)
 

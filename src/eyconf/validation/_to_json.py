@@ -118,7 +118,7 @@ def __convert_type_to_schema(
         return __convert_type_to_schema(field_type, **kwargs)[0], is_required
 
     # Handler union
-    if origin is Union or origin is UnionType:
+    if origin is UnionType:
         allowed_types = set(get_args(field_type))
         if NoneType in allowed_types:
             is_required = False
