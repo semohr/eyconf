@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import logging
-import types
 from copy import deepcopy
 from dataclasses import dataclass, fields, is_dataclass
+from types import NoneType, UnionType
 from typing import (
     TYPE_CHECKING,
     Any,
     Generic,
     Protocol,
     TypeVar,
-    Union,
     get_args,
     get_origin,
     get_type_hints,
@@ -185,15 +184,15 @@ def _dataclass_from_dict_inner(
     """Inner function that handles Union types and may return None."""
     # Handle Union types
     origin = get_origin(target_type)
-    if origin is Union or origin is types.UnionType:
+    if origin is UnionType:
         args = get_args(target_type)
-        includes_none = any(arg is types.NoneType or arg is type(None) for arg in args)
+        includes_none = any(arg is NoneType or arg is type(None) for arg in args)
 
         if data is None and includes_none:
             return None
 
         for arg in args:
-            if arg is types.NoneType or arg is type(None):
+            if arg is NoneType or arg is type(None):
                 continue
             try:
                 return _dataclass_from_dict_inner(arg, data, allow_additional)
