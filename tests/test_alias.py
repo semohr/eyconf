@@ -6,7 +6,7 @@ from typing import Any, TypeVar
 import pytest
 from eyconf import EYConfBase
 from eyconf.utils import DictAccess, dict_access
-from eyconf.as_dict import asdict_with_aliases
+from eyconf.asdict import asdict_with_aliases
 
 T = TypeVar("T", bound=Any)
 

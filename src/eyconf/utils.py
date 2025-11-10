@@ -16,7 +16,7 @@ from typing import (
     runtime_checkable,
 )
 
-from .as_dict import asdict_with_aliases
+from .asdict import asdict_with_aliases
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
