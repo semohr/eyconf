@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from typing import Any, TypeVar
+from typing import Any, Optional, TypeVar
 import pytest
 from eyconf import EYConfBase
-from eyconf.utils import DictAccess, dict_access
-from eyconf.asdict import asdict_with_aliases
+from eyconf.config.extra_fields import EYConfExtraFields
+from eyconf.utils import AttributeDict, DictAccess, asdict_with_aliases, dict_access
+
 
 T = TypeVar("T", bound=Any)
 
@@ -20,7 +21,7 @@ class Config42:
 @dataclass
 class ConfigNested:
     nested: Config42 = field(default_factory=Config42)
-    nested_optional: Config42 | None = None
+    nested_optional: Optional[Config42] = None
     other_field: str = "Hello, World!"
 
 
@@ -89,7 +90,7 @@ class TestAliasWithDictAccess:
         # We want this asymetric access behavior
         assert config.data.attr_field == 42
         with pytest.raises(AttributeError):
-            config.data.dict_field  # type: ignore
+            config.data.dict_field # type: ignore
 
         assert isinstance(config.data, DictAccess)
 
@@ -97,3 +98,15 @@ class TestAliasWithDictAccess:
         assert config.data["dict_field"] == 42
         with pytest.raises(KeyError):
             config.data["attr_field"]
+
+def test_extra_fields_dict_alias_access(self):
+    config = EYConfExtraFields(AliasDictConfig(attr_field=42))
+
+    assert config.data.attr_field == 42
+    # assert config.data.dict_field == ???
+
+    assert isinstance(config.data, DictAccess)
+
+    assert config.data["dict_field"] == 42
+    with pytest.raises(KeyError):
+        config.data["attr_field"]
