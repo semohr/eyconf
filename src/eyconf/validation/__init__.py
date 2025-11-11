@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
-from dataclasses import asdict, is_dataclass
+from dataclasses import is_dataclass
 from typing import TYPE_CHECKING, TypeVar, cast
 
 from eyconf.asdict import asdict_with_aliases
@@ -28,7 +29,7 @@ __all__ = [
 D = TypeVar("D", bound="DataclassInstance")
 
 
-def validate(data: D | dict, schema: type[D]) -> D:
+def validate(data: D | dict, schema: type[D], allow_additional: bool = True) -> D:
     """Validate the provided data against the schema and return the dataclass instance.
 
     This function first converts the schema dataclass to a JSON schema using
@@ -44,6 +45,8 @@ def validate(data: D | dict, schema: type[D]) -> D:
         The data to be validated, either as a dictionary or an instance of the schema dataclass.
     schema (type[D]):
         The dataclass type representing the schema to validate against.
+    allow_additional (bool):
+        Whether to allow additional properties not defined in the schema. Default is False.
 
     Returns
     -------
@@ -57,13 +60,17 @@ def validate(data: D | dict, schema: type[D]) -> D:
 
     """
     json_schema = to_json_schema(schema)
+    validate_json(data, json_schema, allow_additional)
+
     if is_dataclass(data):
-        data = asdict(data)
-    validate_json(data, json_schema)
-    return dataclass_from_dict(schema, **data)
+        return cast(D, data)
+    else:
+        return dataclass_from_dict(schema, data, allow_additional)
 
 
-def validate_json(data: DataclassInstance | dict, schema: dict) -> None:
+def validate_json(
+    data: DataclassInstance | dict, schema: dict, allow_additional: bool = True
+) -> None:
     """Validate the provided data against the given schema.
 
     This function uses the Draft202012Validator to check if the data
@@ -76,6 +83,10 @@ def validate_json(data: DataclassInstance | dict, schema: dict) -> None:
         The data to be validated.
     schema (dict):
         The JSON schema to validate against.
+    allow_additional (bool):
+        Whether to allow additional properties not defined in the schema.
+        Only relevant for dataclass instances.
+        Default is True.
 
     Raises
     ------
@@ -83,15 +94,18 @@ def validate_json(data: DataclassInstance | dict, schema: dict) -> None:
                           this error is raised with details of the violations.
     """
     if is_dataclass(data):
-        data = asdict_with_aliases(data)
+        data = asdict_with_aliases(
+            data,
+            include_attributes=not allow_additional,
+            include_properties=not allow_additional,
+            # We cannot conveniently tell the validator below to raise on additional properties (can we?), but we can decide if they are included while converting
+        )
 
     schema = allow_none_in_schema(schema)
     validator = Draft202012Validator(schema)  # type: ignore[bad-instantiation]
 
     errors = list(validator.iter_errors(data))
     if errors:
-        import json
-
         log.error("Validation errors in configuration data!")
         log.debug(f"Data: {json.dumps(data, indent=2)}")
         log.debug(f"Schema: {json.dumps(schema, indent=2)}")
