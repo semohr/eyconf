@@ -1,9 +1,9 @@
 from collections.abc import Sequence
 from collections.abc import Sequence as ABCSequence
-from dataclasses import is_dataclass
+from dataclasses import fields, is_dataclass
 from functools import cache
 from types import NoneType, UnionType
-from typing import Any, Literal, Union, get_args, get_origin
+from typing import Any, Literal, get_args, get_origin
 
 from jsonschema import Draft202012Validator
 from typing_extensions import NotRequired
@@ -50,9 +50,15 @@ def to_json_schema(
 
     # Get type hints for the TypedDict
     type_hints = get_type_hints_resolve_namespace(type, include_extras=True)
+    dataclass_fields = fields(type) if is_dataclass(type) else {}
+    alias_fields = {f.name: f for f in dataclass_fields if "alias" in f.metadata}
 
     # Add the type hints to the schema
     for field_name, field_type in type_hints.items():
+        # Resolve alias
+        if alias_field := alias_fields.get(field_name):
+            field_name = alias_field.metadata["alias"]
+
         p, r = __convert_type_to_schema(field_type, allow_additional=allow_additional)
         schema["properties"][field_name] = p
 
@@ -105,7 +111,7 @@ def __convert_type_to_schema(
         return __convert_type_to_schema(field_type, **kwargs)[0], is_required
 
     # Handler union
-    if origin is Union or origin is UnionType:
+    if origin is UnionType:
         allowed_types = set(get_args(field_type))
         if NoneType in allowed_types:
             is_required = False

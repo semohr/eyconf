@@ -1,6 +1,7 @@
 from eyconf.utils import AttributeDict, AccessProxy, dict_access, DictAccess
 from dataclasses import dataclass, field
 
+from eyconf.asdict import asdict_with_aliases
 
 @dict_access
 @dataclass
@@ -143,3 +144,57 @@ class TestDictStyleAccess:
 
         assert config["int_field"] == 42
         assert config["nested"]["str_field"] == "FortyTwo"
+
+
+@dataclass
+class ConfigWithProperty:
+    int_field: int = 42
+
+    @property
+    def computed_property(self) -> str:
+        return f"int_filed={self.int_field}"
+
+
+class TestAsDict:
+    """Test our customized asdict_with_aliases function.
+
+    Besides the alias resolution, it also supports extracting
+    properties and non-field attributes.
+
+    Alias resolution is tested in test_alias.py
+    """
+
+    def test_asdict(self):
+
+        config = ConfigWithProperty()
+        config.non_field_attr = 100 # type: ignore
+        dump = asdict_with_aliases(config)
+
+        assert config.computed_property == "int_filed=42"
+        assert config.non_field_attr == 100  # type: ignore
+
+        assert dump["int_field"] == 42
+        # by defaults all extras are disabled
+        assert "computed_property" not in dump
+        assert "non_field_attr" not in dump
+
+        dump_with_props = asdict_with_aliases(
+            config,
+            include_properties=True,
+            include_attributes=False,
+        )
+
+        assert dump_with_props["int_field"] == 42
+        assert dump_with_props["computed_property"] == "int_filed=42"
+        assert "non_field_attr" not in dump_with_props
+
+        dump_with_attrs = asdict_with_aliases(
+            config,
+            include_properties=False,
+            include_attributes=True,
+        )
+        assert dump_with_attrs["int_field"] == 42
+        assert dump_with_attrs["non_field_attr"] == 100  # type: ignore
+        assert "computed_property" not in dump_with_attrs
+
+

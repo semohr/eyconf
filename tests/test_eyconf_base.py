@@ -16,6 +16,12 @@ class Config42:
 
 
 @dataclass
+class Config42Required:
+    int_field: int
+    str_field: str = "FortyTwo!"
+
+
+@dataclass
 class ConfigNested:
     nested: Config42 = field(default_factory=Config42)
     nested_optional: Config42 | None = None
@@ -47,6 +53,15 @@ class TestCreation:
         assert conf_dict.data.int_field == 100
         assert conf_dict.data.str_field == "Dict value!"
         assert isinstance(conf_dict.data, Config42)
+
+    def test_init_dict_with_required(self):
+        conf_dict = EYConfBase(
+            {"int_field": 100, "str_field": "Dict value!"},
+            schema=Config42Required,
+        )
+        assert conf_dict.data.int_field == 100
+        assert conf_dict.data.str_field == "Dict value!"
+        assert isinstance(conf_dict.data, Config42Required)
 
     def test_init_dict_no_schema(self):
         conf = EYConfBase(Config42())
