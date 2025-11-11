@@ -1,7 +1,9 @@
-from dataclasses import asdict
-from typing import TYPE_CHECKING, Any, TypeVar
+from dataclasses import asdict, is_dataclass
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
-from eyconf.utils import AccessProxy, AttributeDict, merge_dicts
+from eyconf.utils import AccessProxy, AttributeDict, dataclass_from_dict, merge_dicts
+from eyconf.validation import validate_json
+from eyconf.validation._to_json import to_json_schema
 
 from .base import EYConfBase
 
@@ -28,8 +30,34 @@ class EYConfExtraFields(EYConfBase[D]):
         data: dict | D,
         schema: type[D] | None = None,
     ):
-        super().__init__(data, schema=schema, allow_additional_properties=True)
+        if schema is not None:
+            self._schema = schema
+        else:
+            if not is_dataclass(data):
+                raise ValueError(
+                    "If no schema is provided, data must be of the schema dataclass instance."
+                )
+            self._schema = type(data)
+
+        # Create schema, raise if Schema is invalid
+        self.allow_additional_properties = True
+        self._json_schema = to_json_schema(
+            self._schema,
+            allow_additional=True,
+        )
+
+        # Will raise ConfigurationError if the data does not comply with the schema
+        validate_json(data, self._json_schema)
+
         self._extra_data = AttributeDict()
+
+        if is_dataclass(data):
+            self._data = cast(D, data)
+        else:
+            self._data = None # type: ignore
+            self.update(data)
+
+
 
     @property
     def data(self) -> D:

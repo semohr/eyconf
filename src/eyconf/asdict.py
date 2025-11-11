@@ -19,7 +19,11 @@ log = logging.getLogger(__name__)
 D = TypeVar("D", bound="DataclassInstance")
 
 
-def asdict_with_aliases(obj: DataclassInstance | DataclassInstance) -> dict:
+def asdict_with_aliases(
+    obj: DataclassInstance | DataclassInstance,
+    include_attributes: bool = False,
+    include_properties: bool = False,
+) -> dict:
     """
     Convert a dataclass to a dict, applying aliases if present.
 
@@ -33,7 +37,12 @@ def asdict_with_aliases(obj: DataclassInstance | DataclassInstance) -> dict:
     if not hasattr(type(obj), "__dataclass_fields__"):
         raise TypeError("asdict_with_aliases() should be called on dataclass instances")
 
-    return _asdict_inner(obj, dict_factory=_alias_dict_factory)  # type: ignore[arg-type]
+    return _asdict_inner(
+        obj,
+        dict_factory=_alias_dict_factory,
+        include_attributes=include_attributes,
+        include_properties=include_properties,
+    )  # type: ignore[arg-type]
 
 
 # -------------- Slightly modified copy from dataclasses.asdict -------------- #
@@ -62,21 +71,57 @@ _ATOMIC_TYPES = frozenset(
 )
 
 
-def _asdict_inner(obj, dict_factory):
+def _asdict_inner(obj, **kwargs):
+    dict_factory = kwargs.get("dict_factory", dict)
+    include_attributes = kwargs.get("include_attributes", False)
+    include_properties = kwargs.get("include_properties", False)
+
     if type(obj) in _ATOMIC_TYPES:
         return obj
     elif hasattr(type(obj), "__dataclass_fields__"):
+        # obj is dataclass
         # fast path for the common case
         if dict_factory is dict:
-            return {
-                f.name: _asdict_inner(getattr(obj, f.name), dict) for f in fields(obj)
+            result = {
+                f.name: _asdict_inner(getattr(obj, f.name), dict_factory=dict)
+                for f in fields(obj)
             }
         else:
-            result = []
+            _result = []
             for f in fields(obj):
-                value = _asdict_inner(getattr(obj, f.name), dict_factory)
-                result.append((f.name, value))
-            return dict_factory(obj, result)
+                value = _asdict_inner(getattr(obj, f.name), **kwargs)
+                _result.append((f.name, value))
+            result = dict_factory(obj, _result)
+
+        field_names = {f.name for f in fields(obj)}
+        extra_attrs = {}
+        if include_attributes:
+            for k, v in obj.__dict__.items():
+                if not k.startswith("_") and k not in field_names:
+                    extra_attrs[k] = _asdict_inner(v, **kwargs)
+
+        if include_properties:
+            for prop in dir(obj):
+                if (
+                    not prop.startswith("_")
+                    and prop not in field_names
+                    and prop not in extra_attrs
+                ):
+                    attr = getattr(type(obj), prop, None)
+                    if isinstance(attr, property):
+                        try:
+                            extra_attrs[prop] = _asdict_inner(
+                                getattr(obj, prop), **kwargs
+                            )
+                        except Exception:
+                            pass  # Ignore property errors
+
+        # Merge. Can we be sure that result is a dict? Depends on factory.
+        if isinstance(result, dict):
+            result.update(extra_attrs)
+
+        return result
+
     elif isinstance(obj, tuple) and hasattr(obj, "_fields"):
         # obj is a namedtuple.  Recurse into it, but the returned
         # object is another namedtuple of the same type.  This is
