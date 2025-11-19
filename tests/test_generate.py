@@ -38,70 +38,6 @@ class TestGenerateDefault:
             "float_field": 3.14,
         }
 
-    def test_docstring(self):
-        """Test the basic functionality."""
-
-        @dataclass
-        class SingleLineDocstring:
-            """This is a docstring."""
-
-            pass
-
-        yaml_str = dataclass_to_yaml(SingleLineDocstring)
-        assert yaml_str == "# This is a docstring.\n"
-        assert yaml.safe_load(yaml_str) == None
-
-        @dataclass
-        class MultiLineDocstring:
-            """This is a docstring that is longer than 80 characters and should be split into multiple lines."""
-
-            pass
-
-        yaml_str = dataclass_to_yaml(MultiLineDocstring)
-        assert (
-            yaml_str
-            == "# This is a docstring that is longer than 80 characters and should be split into\n# multiple lines.\n"
-        )
-        assert yaml.safe_load(yaml_str) == None
-
-        @dataclass
-        class NoDocstring:
-            pass
-
-        yaml_str = dataclass_to_yaml(NoDocstring)
-        assert yaml_str == ""
-        assert yaml.safe_load(yaml_str) == None
-
-    def test_annotation_docstring(self):
-        """Test the basic functionality."""
-
-        @dataclass
-        class VariableDocstring:
-            """This is a module docstring."""
-
-            int_field: Annotated[int, "This is a docstring for the int field."] = 42
-
-        yaml_str = dataclass_to_yaml(VariableDocstring)
-        print(yaml_str)
-        assert (
-            yaml_str
-            == "# This is a module docstring.\n\n# This is a docstring for the int field.\nint_field: 42"
-        )
-
-        @dataclass
-        class MultiLineVariableDocstring:
-            """This is a module docstring."""
-
-            int_field: Annotated[int, "This is a docstring", "Test"] = 42
-
-        yaml_str = dataclass_to_yaml(MultiLineVariableDocstring)
-        print(yaml_str)
-        assert (
-            yaml_str
-            == "# This is a module docstring.\n\n# This is a docstring\n# Test\nint_field: 42"
-        )
-        assert yaml.safe_load(yaml_str) == {"int_field": 42}
-
     def test_optional(self):
         @dataclass
         class Optionals:
@@ -339,3 +275,109 @@ class TestGenerateDefault:
         yaml_str = dataclass_to_yaml(BeetsSchema)
         print(yaml_str)
         assert True
+
+
+class TestDocstringGeneration:
+    """Test generation of docstrings from dataclass fields."""
+
+    def test_simple(self):
+        """Test the basic functionality."""
+
+        @dataclass
+        class SingleLineDocstring:
+            """This is a docstring."""
+
+            pass
+
+        yaml_str = dataclass_to_yaml(SingleLineDocstring)
+        assert yaml_str == "# This is a docstring.\n"
+        assert yaml.safe_load(yaml_str) == None
+
+    def test_multiline(self):
+        @dataclass
+        class MultiLineDocstring:
+            """This is a docstring that is longer than 80 characters and should be split into multiple lines."""
+
+            pass
+
+        yaml_str = dataclass_to_yaml(MultiLineDocstring)
+        assert (
+            yaml_str
+            == "# This is a docstring that is longer than 80 characters and should be split into\n# multiple lines.\n"
+        )
+        assert yaml.safe_load(yaml_str) == None
+
+    def test_no_docstring(self):
+        @dataclass
+        class NoDocstring:
+            pass
+
+        yaml_str = dataclass_to_yaml(NoDocstring)
+        assert yaml_str == ""
+        assert yaml.safe_load(yaml_str) == None
+
+    def test_annotation_docstring(self):
+        """Test the basic functionality."""
+
+        @dataclass
+        class VariableDocstring:
+            """This is a module docstring."""
+
+            int_field: Annotated[int, "This is a docstring for the int field."] = 42
+
+        yaml_str = dataclass_to_yaml(VariableDocstring)
+        print(yaml_str)
+        assert (
+            yaml_str
+            == "# This is a module docstring.\n\n# This is a docstring for the int field.\nint_field: 42"
+        )
+
+    def test_multiline_variable_docstring(self):
+        """Test the basic functionality."""
+
+        @dataclass
+        class MultiLineVariableDocstring:
+            """This is a module docstring."""
+
+            int_field: Annotated[int, "This is a docstring", "Test"] = 42
+
+        yaml_str = dataclass_to_yaml(MultiLineVariableDocstring)
+        print(yaml_str)
+        assert (
+            yaml_str
+            == "# This is a module docstring.\n\n# This is a docstring\n# Test\nint_field: 42"
+        )
+        assert yaml.safe_load(yaml_str) == {"int_field": 42}
+
+    def test_nested_variable_docstring(self):
+        """Test the basic functionality."""
+
+        @dataclass
+        class Inner:
+            """This is a section docstring."""
+
+            single: Annotated[int, "This is a docstring for the int field."] = 42
+            multi: Annotated[int, "This is a docstring", "Test"] = 42
+
+        @dataclass
+        class Outer:
+            """This is a module docstring."""
+
+            inner: Annotated[Inner, "This is a docstring for the inner field."] = field(
+                default_factory=lambda: Inner()
+            )
+
+        yaml_str = dataclass_to_yaml(Outer)
+        expected_yaml = (
+            "# This is a module docstring.\n\n"
+            "# This is a docstring for the inner field.\n"
+            "inner:\n"
+            "  # This is a section docstring.\n\n"
+            "  # This is a docstring for the int field.\n"
+            "  single: 42\n"
+            "  # This is a docstring\n"
+            "  # Test\n"
+            "  multi: 42\n"
+        )
+        assert yaml_str == expected_yaml
+        assert yaml.safe_load(yaml_str) == {"inner": {"single": 42, "multi": 42}}

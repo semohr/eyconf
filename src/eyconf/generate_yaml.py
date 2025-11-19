@@ -196,19 +196,21 @@ def __field_to_lines(field: Field[Any], field_type: type, indent=0) -> list[Line
     origin = get_origin(field_type)
     args = get_args(field_type)
 
+    # Extract docstring from annotated
+    if origin is Annotated:
+        # We always assume the first argument is the type
+        # And all following are annotations (must be strings)
+        field_type = args[0]
+        annotations = [arg for arg in args[1:] if isinstance(arg, str)]
+        for annotation in annotations:
+            lines += __split_docstring(annotation, indent=indent)
+
     if is_dataclass(field_type):
         # Add section
         lines.append(SectionLine(field.name, indent=indent))
         lines += _dataclass_to_lines(field_type, indent=indent + 1)
         lines.append(EmptyLine())
         return lines
-
-    # Extract docstring from annotated
-    if origin is Annotated:
-        annotations = [arg for arg in args if isinstance(arg, str)]
-        args = tuple(arg for arg in args if not isinstance(arg, str))
-        for annotation in annotations:
-            lines += __split_docstring(annotation, indent=indent)
 
     # Check if field is optional
     is_optional = False
@@ -313,6 +315,7 @@ def __field_to_lines(field: Field[Any], field_type: type, indent=0) -> list[Line
         )
         return lines
 
+    breakpoint()
     raise NotImplementedError(
         f"Field type {field.type} {args} {origin} is not supported."
     )
