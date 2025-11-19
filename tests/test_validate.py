@@ -403,6 +403,47 @@ class TestToSchema:
         ):
             to_json_schema(Schema)
 
+    def test_annotated(self):
+        from typing import Annotated
+
+        @dataclass
+        class Schema:
+            foo: Annotated[str, "some metadata"]
+            bar: Annotated[int, "some metadata", "more metadata"]
+
+        schema = to_json_schema(Schema)
+        assert schema == {
+            "type": "object",
+            "properties": {
+                "foo": {"type": "string"},
+                "bar": {"type": "integer"},
+            },
+            "required": ["foo", "bar"],
+            "additionalProperties": True,
+        }
+
+        @dataclass
+        class NestedAnnotated:
+            schema: Schema
+
+        schema = to_json_schema(NestedAnnotated)
+        assert schema == {
+            "type": "object",
+            "properties": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "foo": {"type": "string"},
+                        "bar": {"type": "integer"},
+                    },
+                    "required": ["foo", "bar"],
+                    "additionalProperties": True,
+                }
+            },
+            "required": ["schema"],
+            "additionalProperties": True,
+        }
+
 
 # This function converts a dataclass to a TypedDict
 def dataclass_to_typeddict(dc_cls: type):

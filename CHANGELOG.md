@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.5]
+
+* Fixed where usage of `Annotated` breaks YAML validation.
+
 ## [0.3.4]
 
 * Moved some of the getting-started information into the advanced-usage guide.

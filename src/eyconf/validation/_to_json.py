@@ -3,7 +3,7 @@ from collections.abc import Sequence as ABCSequence
 from dataclasses import is_dataclass
 from functools import cache
 from types import NoneType, UnionType
-from typing import Any, Literal, Union, get_args, get_origin
+from typing import Annotated, Any, Literal, Union, get_args, get_origin
 
 from jsonschema import Draft202012Validator
 from typing_extensions import NotRequired
@@ -89,6 +89,13 @@ def __convert_type_to_schema(
     is_required = True
 
     origin = get_origin(field_type)
+
+    # Unpack annotated types
+    if origin is Annotated:
+        # We always assume the first argument is the type
+        # all other arguments are metadata (docstrings)
+        field_type = get_args(field_type)[0]
+        return __convert_type_to_schema(field_type, **kwargs)
 
     # Handle Literal
     if origin is Literal:
