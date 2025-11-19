@@ -153,3 +153,33 @@ width: 80
 
 </div>
 
+
+## Annotated Docstrings
+
+You can use `Annotated` from the `typing` module to add docstrings to individual fields in your dataclasses. These docstrings will be included as comments in the generated YAML configuration file.
+
+```python
+from dataclasses import dataclass
+from typing import Annotated
+
+@dataclass
+class Config:
+    """This is a config docstring."""
+    host: Annotated[str, "The host of the server"] = "localhost"
+    port: Annotated[int, "The port of the server"] = 8080
+    use_ssl: Annotated[bool, "Whether to use SSL", "default: false"] = False
+```
+
+When you generate the YAML file using `EYConf`, the docstrings will appear as comments:
+
+```yaml
+# This is a config docstring.
+
+# The host of the server
+host: localhost
+# The port of the server
+port: 8080
+# Whether to use SSL
+# default: false
+use_ssl: false
+```
