@@ -2,11 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.0]
+## [0.3.4]
 
 * Moved some of the getting-started information into the advanced-usage guide.
 * Added information on how to use the `@dict_access` decorator for dict-style access to configuration values.
 * We are now back to using `mypy` for type checking instead of `pyrefly`.
+* Fixed issue with `Annotated` docstrings raising NotImplementedError during YAML generation. This happened only for usage of `Annotated` in nested dataclasses.
+
 ## [0.3.3]
 
 * Empty AttributeDicts are no longer considered truthy. An AttributeDict with no keys will evaluate to False.
