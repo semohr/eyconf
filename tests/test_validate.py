@@ -14,6 +14,8 @@ from eyconf.type_utils import get_type_hints_resolve_namespace
 from eyconf.validation import to_json_schema
 from dataclasses import dataclass
 
+from typing import Annotated
+
 
 class TestToSchema:
     """
@@ -404,8 +406,6 @@ class TestToSchema:
             to_json_schema(Schema)
 
     def test_annotated(self):
-        from typing import Annotated
-
         @dataclass
         class Schema:
             foo: Annotated[str, "some metadata"]
