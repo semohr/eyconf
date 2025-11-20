@@ -21,7 +21,7 @@ D = TypeVar("D", bound="DataclassInstance")
 
 def asdict_with_aliases(
     obj: DataclassInstance | DataclassInstance,
-    include_attributes: bool = False,
+    include_attributes: bool = True,
     include_properties: bool = False,
 ) -> dict:
     """

@@ -3,13 +3,14 @@ from collections.abc import Sequence as ABCSequence
 from dataclasses import fields, is_dataclass
 from functools import cache
 from types import NoneType, UnionType
-from typing import Annotated, Any, Literal, Union, get_args, get_origin
+from typing import Annotated, Any, ClassVar, Literal, Union, get_args, get_origin
 
 from jsonschema import Draft202012Validator
 from typing_extensions import NotRequired
 
 from eyconf.constants import primitive_type_mapping
 from eyconf.type_utils import get_type_hints_resolve_namespace
+from eyconf.utils import check_allows_additional
 
 SchemaType = dict[str, Any] | dict[str, str] | dict[Any, Any]
 
@@ -21,7 +22,7 @@ __all__ = ["to_json_schema"]
 def to_json_schema(
     type: type,
     check_schema: bool = True,
-    allow_additional: bool = True,
+    allow_additional: bool | None = None,
 ) -> dict:
     """Convert a TypedDict or dataclass to a JSON schema.
 
@@ -31,8 +32,10 @@ def to_json_schema(
         The TypedDict or dataclass to convert.
     check_schema : bool
         Whether to check the schema for validity.
-    allow_additional : bool
+    allow_additional : bool or None
         Whether to allow extra, unrecognized properties in the schema.
+        If None (default), uses the `__allow_additional` attribute
+        of the TypedDict or dataclass if present, otherwise False.
 
     Raises
     ------
@@ -45,7 +48,9 @@ def to_json_schema(
         "type": "object",
         "properties": {},
         "required": [],
-        "additionalProperties": allow_additional,
+        "additionalProperties": check_allows_additional(type)
+        if allow_additional is None
+        else allow_additional,
     }
 
     # Get type hints for the TypedDict
@@ -58,6 +63,11 @@ def to_json_schema(
         # Resolve alias
         if alias_field := alias_fields.get(field_name):
             field_name = alias_field.metadata["alias"]
+
+        origin = get_origin(field_type)
+        if origin is ClassVar:
+            # ignore dunder like our __allow_additional
+            continue
 
         p, r = __convert_type_to_schema(field_type, allow_additional=allow_additional)
         schema["properties"][field_name] = p

@@ -4,6 +4,7 @@ import sys
 from dataclasses import is_dataclass
 from typing import (
     Any,
+    TypeGuard,
     get_type_hints,
 )
 
@@ -69,6 +70,6 @@ def _get_namespace(
     return globalns, localns
 
 
-def is_dataclass_type(obj: Any) -> bool:
+def is_dataclass_type(obj: Any) -> TypeGuard[type]:
     """Check if an object is a dataclass type (class), not an instance."""
     return is_dataclass(obj) and isinstance(obj, type)

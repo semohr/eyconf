@@ -3,6 +3,7 @@ from dataclasses import fields
 from pprint import pprint
 from typing import (
     Any,
+    ClassVar,
     Literal,
     Optional,
     TypedDict,
@@ -338,7 +339,7 @@ class TestToSchema:
                 "nay": {"type": "null"},
             },
             "required": [],
-            "additionalProperties": True,
+            "additionalProperties": False,
         }
 
     def test_special(self):
@@ -353,7 +354,7 @@ class TestToSchema:
                 "foo": {"type": "null"},
             },
             "required": ["foo"],
-            "additionalProperties": True,
+            "additionalProperties": False,
         }
 
         @dataclass
@@ -367,7 +368,7 @@ class TestToSchema:
                 "foo": {},
             },
             "required": ["foo"],
-            "additionalProperties": True,
+            "additionalProperties": False,
         }
 
         @dataclass
@@ -381,7 +382,7 @@ class TestToSchema:
                 "foo": {"type": "null"},
             },
             "required": ["foo"],
-            "additionalProperties": True,
+            "additionalProperties": False,
         }
 
     def test_cache_hit(self):
@@ -419,7 +420,7 @@ class TestToSchema:
                 "bar": {"type": "integer"},
             },
             "required": ["foo", "bar"],
-            "additionalProperties": True,
+            "additionalProperties": False,
         }
 
         @dataclass
@@ -437,12 +438,45 @@ class TestToSchema:
                         "bar": {"type": "integer"},
                     },
                     "required": ["foo", "bar"],
-                    "additionalProperties": True,
+                    "additionalProperties": False,
                 }
             },
             "required": ["schema"],
-            "additionalProperties": True,
+            "additionalProperties": False,
         }
+
+    def test_allow_additional(self):
+        @dataclass
+        class Schema:
+            foo: str
+
+        @dataclass
+        class Schema2:
+            foo: str
+            __allow_additional: ClassVar[bool] = True
+
+        # default is false
+        schema = to_json_schema(Schema)
+        assert schema["additionalProperties"] is False
+
+        # but can be enabled via schema attribute
+        schema = to_json_schema(Schema2)
+        assert schema["additionalProperties"] is True
+
+        schema = to_json_schema(Schema, allow_additional=False)
+        assert schema["additionalProperties"] is False
+
+        schema = to_json_schema(Schema, allow_additional=True)
+        assert schema["additionalProperties"] is True
+
+        @dataclass
+        class Schema3:
+            bar: Schema2
+            __allow_additional: ClassVar[bool] = False
+
+        schema = to_json_schema(Schema3)
+        assert schema["additionalProperties"] is False
+        assert schema["properties"]["bar"]["additionalProperties"] is True
 
 
 # This function converts a dataclass to a TypedDict

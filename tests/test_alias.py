@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 
-from typing import Any, Optional, TypeVar
+from typing import Any, ClassVar, TypeVar
 import pytest
 from eyconf import EYConfBase
 from eyconf.config.extra_fields import EYConfExtraFields
-from eyconf.utils import AttributeDict, DictAccess, asdict_with_aliases, dict_access
-from eyconf.validation import validate, validate_json
+from eyconf.utils import DictAccess, asdict_with_aliases, dict_access
+from eyconf.validation import ConfigurationError, MultiConfigurationError, validate, validate_json
 from eyconf.validation._to_json import to_json_schema
 
 
@@ -23,7 +23,7 @@ class Config42:
 @dataclass
 class ConfigNested:
     nested: Config42 = field(default_factory=Config42)
-    nested_optional: Optional[Config42] = None
+    nested_optional: Config42 | None = None
     other_field: str = "Hello, World!"
 
 
@@ -41,6 +41,13 @@ def conf_nested() -> EYConfBase[ConfigNested]:
 class AliasConfig:
     attr_field: int = field(metadata={"alias": "dict_field"})
     str_field: str = "FortyTwo!"
+
+@dataclass
+class AliasConfigAdditional:
+    attr_field: int = field(metadata={"alias": "dict_field"})
+    str_field: str = "FortyTwo!"
+
+    __allow_additional: ClassVar[bool] = True
 
 
 @dataclass
@@ -66,43 +73,28 @@ class TestAlias:
         nested_dump = asdict_with_aliases(nested_config)
         assert nested_dump["nested"]["dict_field"] == 43
 
-    def test_validate_json(self):
-        config = AliasConfig(attr_field=42)
-        json_schema = to_json_schema(AliasConfig)
-
-        # raises if invalid
-        validate_json(config, schema = json_schema)
-
-        with pytest.raises(Exception):
-            # using the dataclasses native asdict
-            # will not do our alias mapping so it should fail
-            validate_json(asdict(config), schema=json_schema)
-
-        # but this should not raise
-        validate_json(asdict_with_aliases(config), schema=json_schema)
-
     def test_validate(self):
         config = AliasConfig(attr_field=42)
 
-        # we use the same logic as in test_validate_json in our wrapper
+        # this should not raise, since we have aliases
         validate(config, schema=AliasConfig)
         validate(asdict_with_aliases(config), schema=AliasConfig)
 
-        with pytest.raises(Exception):
+        with pytest.raises(MultiConfigurationError):
+            # using the dataclasses native asdict
+            # will not do our alias mapping so it should fail
             validate(asdict(config), schema=AliasConfig)
 
     def test_validate_additional(self):
         config = AliasConfig(attr_field=42)
 
         config.foo = "bar" # type: ignore
-        validate(config, schema=AliasConfig, allow_additional=True)
 
-        with pytest.raises(Exception):
-            # Currently does not raise, not sure why our json validator does not catch this. The whole allow_additional flag needs 4-eye decisions, anyway.
-            # (Having it non-effective for dicts sucks)
-            validate(config, schema=AliasConfig, allow_additional=False)
+        with pytest.raises(MultiConfigurationError):
+            # By default, no additional attributes are allowed.
+            validate(config, schema=AliasConfig)
 
-
+        validate(config, schema=AliasConfigAdditional)
 
 
     def test_dict_alias_update(self):

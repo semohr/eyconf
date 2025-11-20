@@ -22,9 +22,10 @@ from eyconf.generate_yaml import dataclass_to_yaml
 from eyconf.type_utils import get_type_hints_resolve_namespace
 from eyconf.utils import (
     AttributeDict,
+    check_allows_additional,
     dataclass_from_dict,
 )
-from eyconf.validation import to_json_schema, validate_json
+from eyconf.validation import to_json_schema, validate, validate_json
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -44,13 +45,11 @@ class EYConfBase(Generic[D]):
     _schema: type[D]
     _data: D
     _json_schema: dict
-    allow_additional_properties: bool
 
     def __init__(
         self,
         data: dict | D,
         schema: type[D] | None = None,
-        allow_additional_properties: bool = False,
     ):
         if schema is not None:
             self._schema = schema
@@ -62,25 +61,21 @@ class EYConfBase(Generic[D]):
             self._schema = type(data)
 
         # Create schema, raise if Schema is invalid
-        self.allow_additional_properties = allow_additional_properties
-        self._json_schema = to_json_schema(
-            self._schema,
-            allow_additional=allow_additional_properties,
-        )
+        self._json_schema = to_json_schema(self._schema)
 
         # Will raise ConfigurationError if the data does not comply with the schema
-        validate_json(data, self._json_schema)
+        validate(data, self._json_schema)
 
         if is_dataclass(data):
             self._data = cast(D, data)
         else:
-            self._data = dataclass_from_dict(
-                self._schema, data, allow_additional=allow_additional_properties
-            )
+            self._data = dataclass_from_dict(self._schema, data)
+
+
 
     def validate(self):
         """Validate the current data against the schema."""
-        validate_json(self._data, self._json_schema)
+        validate(self._data, self._json_schema)
 
     def update(self, data: dict):
         """Update the configuration with provided data.
@@ -158,7 +153,7 @@ class EYConfBase(Generic[D]):
             raise e from e
 
     def _update_additional(self, target, key, value: Any, _current_path: list[str]):
-        if not self.allow_additional_properties:
+        if not check_allows_additional(target):
             raise AttributeError(
                 "Cannot set unknown attribute"
                 f" '{'.'.join(_current_path + [key])}' on configuration."

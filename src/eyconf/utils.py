@@ -16,6 +16,8 @@ from typing import (
     runtime_checkable,
 )
 
+from eyconf.type_utils import is_dataclass_type
+
 from .asdict import asdict_with_aliases
 
 if TYPE_CHECKING:
@@ -176,6 +178,7 @@ def dataclass_from_dict(
     if result is None:
         raise ValueError(f"Could not parse data {data} with type {in_type}")
     return result
+    # TODO: resume here, remove allow_additional kwarg and infer from schema
 
 
 def _dataclass_from_dict_inner(
@@ -316,3 +319,13 @@ def dict_access(cls: type[T]) -> type[T]:
 
     setattr(cls, "__getitem__", __getitem__)
     return cls
+
+
+def check_allows_additional(schema: D | type[D]) -> bool:
+    """Whether the dataclass allows additional properties."""
+    if is_dataclass_type(schema):
+        return getattr(schema, f"_{schema.__name__}__allow_additional", False)
+    elif is_dataclass(schema) and not isinstance(schema, type):
+        return getattr(schema, f"_{schema.__class__.__name__}__allow_additional", False)
+    else:
+        raise TypeError("check_allows_additional only works with dataclass types")
