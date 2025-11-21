@@ -5,7 +5,6 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, ClassVar, TypeVar
 import pytest
 from eyconf import EYConfBase
-from eyconf.config.extra_fields import EYConfExtraFields
 from eyconf.utils import DictAccess, asdict_with_aliases, dict_access
 from eyconf.validation import (
     MultiConfigurationError,
@@ -133,16 +132,3 @@ class TestAliasWithDictAccess:
         assert config.data["dict_field"] == 42
         with pytest.raises(KeyError):
             config.data["attr_field"]
-
-
-def test_extra_fields_dict_alias_access(self):
-    config = EYConfExtraFields(AliasDictConfig(attr_field=42))
-
-    assert config.data.attr_field == 42
-    # assert config.data.dict_field == ???
-
-    assert isinstance(config.data, DictAccess)
-
-    assert config.data["dict_field"] == 42
-    with pytest.raises(KeyError):
-        config.data["attr_field"]

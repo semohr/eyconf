@@ -1,8 +1,9 @@
+import logging
 from dataclasses import asdict, is_dataclass
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
-from eyconf.utils import AccessProxy, AttributeDict, merge_dicts
-from eyconf.validation import validate_json
+from eyconf.utils import AccessProxy, AttributeDict, iter_dataclass_type, merge_dicts
+from eyconf.validation import validate
 from eyconf.validation._to_json import to_json_schema
 
 from .base import EYConfBase
@@ -12,6 +13,9 @@ if TYPE_CHECKING:
 
 # Needs the string escaping to work at runtime as _typeshed is not a real module
 D = TypeVar("D", bound="DataclassInstance")
+
+
+log = logging.getLogger(__name__)
 
 
 class EYConfExtraFields(EYConfBase[D]):
@@ -39,15 +43,24 @@ class EYConfExtraFields(EYConfBase[D]):
                 )
             self._schema = type(data)
 
+        # Automatically set __allow_additional to True in the schema(s) if not set
+        for s in iter_dataclass_type(self._schema):
+            if not hasattr(s, "__allow_additional"):
+                setattr(s, "__allow_additional", True)
+            else:
+                log.debug(
+                    f"Schema {s.__name__} already has __allow_additional set to "
+                    f"{getattr(s, '__allow_additional')}."
+                )
+
         # Create schema, raise if Schema is invalid
-        self.allow_additional_properties = True
         self._json_schema = to_json_schema(
             self._schema,
             allow_additional=True,
         )
 
         # Will raise ConfigurationError if the data does not comply with the schema
-        validate_json(data, self._json_schema)
+        validate(data, self._json_schema)
 
         self._extra_data = AttributeDict()
 

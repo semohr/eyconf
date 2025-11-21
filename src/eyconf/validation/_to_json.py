@@ -1,9 +1,11 @@
 from collections.abc import Sequence
-from collections.abc import Sequence as ABCSequence
 from dataclasses import fields, is_dataclass
 from functools import cache
 from types import NoneType, UnionType
 from typing import Annotated, Any, ClassVar, Literal, get_args, get_origin
+
+# for some reason typing  Sequence and abc sequence are not the same type
+from typing import Sequence as TypingSequence  # noqa: UP035
 
 from jsonschema import Draft202012Validator
 from typing_extensions import NotRequired
@@ -149,7 +151,7 @@ def __convert_type_to_schema(
             return t, is_required
 
     # Handle sequence types
-    if origin in [list, set, tuple, Sequence, ABCSequence]:
+    if origin in [list, set, tuple, Sequence, TypingSequence]:
         return {
             "type": "array",
             "items": __convert_type_to_schema(get_args(field_type)[0], **kwargs)[0],
@@ -164,7 +166,7 @@ def __convert_type_to_schema(
         pass
 
     # Handle Dicts - arbitrary keys with typed values
-    if origin in [dict, dict]:
+    if origin is dict:
         key_type, value_type = get_args(field_type)
         if key_type is not str:
             raise ValueError("Only string keys are supported in dict types")
