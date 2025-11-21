@@ -170,20 +170,15 @@ def merge_dicts(a: dict, b: dict, path=[]):
     return a
 
 
-def dataclass_from_dict(
-    in_type: type[D], data: dict, allow_additional: bool = False
-) -> D:
+def dataclass_from_dict(in_type: type[D], data: dict) -> D:
     """Convert a dict to a dataclass instance of the given type. Always returns a dataclass."""
-    result = _dataclass_from_dict_inner(in_type, data, allow_additional)
+    result = _dataclass_from_dict_inner(in_type, data)
     if result is None:
         raise ValueError(f"Could not parse data {data} with type {in_type}")
     return result
-    # TODO: resume here, remove allow_additional kwarg and infer from schema
 
 
-def _dataclass_from_dict_inner(
-    target_type: type, data: Any, allow_additional: bool = False
-) -> Any:
+def _dataclass_from_dict_inner(target_type: type, data: Any) -> Any:
     """Inner function that handles Union types and may return None."""
     # Handle Union types
     origin = get_origin(target_type)
@@ -198,7 +193,7 @@ def _dataclass_from_dict_inner(
             if arg is NoneType or arg is type(None):
                 continue
             try:
-                return _dataclass_from_dict_inner(arg, data, allow_additional)
+                return _dataclass_from_dict_inner(arg, data)
             except (ValueError, TypeError, KeyError):
                 continue
         return None
@@ -220,24 +215,25 @@ def _dataclass_from_dict_inner(
             if key in aliased_fields.keys():
                 key = aliased_fields[key]
                 found_fields[key] = _dataclass_from_dict_inner(
-                    field_types_to_use[key], value, allow_additional
+                    field_types_to_use[key], value
                 )
             elif key in field_types_to_use.keys():
                 found_fields[key] = _dataclass_from_dict_inner(
-                    field_types_to_use[key], value, allow_additional
+                    field_types_to_use[key], value
                 )
             else:
                 additional_fields[key] = value
 
         try:
             res = target_type(**found_fields)  # type: ignore[bad-instantiation]
-            if allow_additional:
+            if check_allows_additional(target_type):
                 for key, value in additional_fields.items():
                     setattr(res, key, value)
             elif len(additional_fields) > 0:
                 raise TypeError(
                     f"Found additional fields {list(additional_fields.keys())}. "
-                    + "Consider setting `allow_additional=True`"
+                    + "Consider using `__allow_additional: ClassVar[bool] = True`"
+                    + " in the dataclass to allow them."
                 )
             return res
         except TypeError as e:
@@ -247,9 +243,9 @@ def _dataclass_from_dict_inner(
     if isinstance(data, dict) and get_origin(target_type) is dict:
         key_type, value_type = get_args(target_type)
         return {
-            _dataclass_from_dict_inner(
-                key_type, k, allow_additional
-            ): _dataclass_from_dict_inner(value_type, v, allow_additional)
+            _dataclass_from_dict_inner(key_type, k): _dataclass_from_dict_inner(
+                value_type, v
+            )
             for k, v in data.items()
         }
 
@@ -257,10 +253,7 @@ def _dataclass_from_dict_inner(
     if isinstance(data, (list, tuple)):
         if hasattr(target_type, "__args__") and target_type.__args__:
             elem_type = target_type.__args__[0]
-            return [
-                _dataclass_from_dict_inner(elem_type, item, allow_additional)
-                for item in data
-            ]
+            return [_dataclass_from_dict_inner(elem_type, item) for item in data]
         else:
             return data
 
