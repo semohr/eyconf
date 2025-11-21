@@ -3,7 +3,7 @@ from collections.abc import Sequence as ABCSequence
 from dataclasses import fields, is_dataclass
 from functools import cache
 from types import NoneType, UnionType
-from typing import Annotated, Any, ClassVar, Literal, Union, get_args, get_origin
+from typing import Annotated, Any, ClassVar, Literal, get_args, get_origin
 
 from jsonschema import Draft202012Validator
 from typing_extensions import NotRequired

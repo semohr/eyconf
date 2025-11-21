@@ -1,7 +1,7 @@
 from dataclasses import asdict, is_dataclass
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
-from eyconf.utils import AccessProxy, AttributeDict, dataclass_from_dict, merge_dicts
+from eyconf.utils import AccessProxy, AttributeDict, merge_dicts
 from eyconf.validation import validate_json
 from eyconf.validation._to_json import to_json_schema
 
@@ -54,10 +54,8 @@ class EYConfExtraFields(EYConfBase[D]):
         if is_dataclass(data):
             self._data = cast(D, data)
         else:
-            self._data = None # type: ignore
+            self._data = None  # type: ignore
             self.update(data)
-
-
 
     @property
     def data(self) -> D:

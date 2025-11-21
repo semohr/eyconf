@@ -320,5 +320,4 @@ def check_allows_additional(schema: D | type[D]) -> bool:
         return getattr(schema, f"_{schema.__name__}__allow_additional", False)
     elif is_dataclass(schema) and not isinstance(schema, type):
         return getattr(schema, f"_{schema.__class__.__name__}__allow_additional", False)
-    else:
-        raise TypeError("check_allows_additional only works with dataclass types")
+    return False

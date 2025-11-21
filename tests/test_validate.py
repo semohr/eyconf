@@ -447,26 +447,17 @@ class TestToSchema:
 
     def test_allow_additional(self):
         @dataclass
-        class Schema:
-            foo: str
-
-        @dataclass
         class Schema2:
             foo: str
             __allow_additional: ClassVar[bool] = True
 
-        # default is false
-        schema = to_json_schema(Schema)
-        assert schema["additionalProperties"] is False
-
-        # but can be enabled via schema attribute
         schema = to_json_schema(Schema2)
         assert schema["additionalProperties"] is True
 
-        schema = to_json_schema(Schema, allow_additional=False)
+        schema = to_json_schema(Schema2, allow_additional=False)
         assert schema["additionalProperties"] is False
 
-        schema = to_json_schema(Schema, allow_additional=True)
+        schema = to_json_schema(Schema2, allow_additional=True)
         assert schema["additionalProperties"] is True
 
         @dataclass

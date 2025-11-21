@@ -7,8 +7,10 @@ import pytest
 from eyconf import EYConfBase
 from eyconf.config.extra_fields import EYConfExtraFields
 from eyconf.utils import DictAccess, asdict_with_aliases, dict_access
-from eyconf.validation import ConfigurationError, MultiConfigurationError, validate, validate_json
-from eyconf.validation._to_json import to_json_schema
+from eyconf.validation import (
+    MultiConfigurationError,
+    validate,
+)
 
 
 T = TypeVar("T", bound=Any)
@@ -41,6 +43,7 @@ def conf_nested() -> EYConfBase[ConfigNested]:
 class AliasConfig:
     attr_field: int = field(metadata={"alias": "dict_field"})
     str_field: str = "FortyTwo!"
+
 
 @dataclass
 class AliasConfigAdditional:
@@ -88,14 +91,13 @@ class TestAlias:
     def test_validate_additional(self):
         config = AliasConfig(attr_field=42)
 
-        config.foo = "bar" # type: ignore
+        config.foo = "bar"  # type: ignore
 
         with pytest.raises(MultiConfigurationError):
             # By default, no additional attributes are allowed.
             validate(config, schema=AliasConfig)
 
         validate(config, schema=AliasConfigAdditional)
-
 
     def test_dict_alias_update(self):
         config = EYConfBase(AliasConfig(attr_field=42))
@@ -116,8 +118,6 @@ class TestAlias:
         assert config.data.str_field == "Test"
 
 
-
-
 class TestAliasWithDictAccess:
     def test_dict_alias_access(self):
         config = EYConfBase(AliasDictConfig(attr_field=42))
@@ -125,7 +125,7 @@ class TestAliasWithDictAccess:
         # We want this asymetric access behavior
         assert config.data.attr_field == 42
         with pytest.raises(AttributeError):
-            config.data.dict_field # type: ignore
+            config.data.dict_field  # type: ignore
 
         assert isinstance(config.data, DictAccess)
 
@@ -133,6 +133,7 @@ class TestAliasWithDictAccess:
         assert config.data["dict_field"] == 42
         with pytest.raises(KeyError):
             config.data["attr_field"]
+
 
 def test_extra_fields_dict_alias_access(self):
     config = EYConfExtraFields(AliasDictConfig(attr_field=42))

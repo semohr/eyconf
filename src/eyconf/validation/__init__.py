@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, TypeVar, cast
 
 from eyconf.asdict import asdict_with_aliases
 from eyconf.type_utils import is_dataclass_type
-from eyconf.utils import dataclass_from_dict
 
 log = logging.getLogger(__name__)
 
@@ -30,9 +29,7 @@ __all__ = [
 D = TypeVar("D", bound="DataclassInstance")
 
 
-def validate(
-    data: D | dict, schema: type[D] | dict
-) -> None:
+def validate(data: D | dict, schema: type[D] | dict) -> None:
     """Validate the provided data against the schema and return the dataclass instance.
 
     This function first converts the schema dataclass to a JSON schema using
@@ -68,7 +65,6 @@ def validate(
         data = asdict_with_aliases(data)
 
     validate_json(data, json_schema)
-
 
 
 def validate_json(data: dict, schema: dict) -> None:

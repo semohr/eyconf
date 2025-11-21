@@ -71,8 +71,6 @@ class EYConfBase(Generic[D]):
         else:
             self._data = dataclass_from_dict(self._schema, data)
 
-
-
     def validate(self):
         """Validate the current data against the schema."""
         validate(self._data, self._json_schema)
