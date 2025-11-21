@@ -73,7 +73,7 @@ log_level = "DEBUG"
 
 
 [tool.coverage.report]
-omit = ["*/tests/*", "./src/eyconf/docs_cli_example.py"]
+omit = ["*/tests/*", "*/docs/*"]
 exclude_also = ["raise NotImplementedError", "@(abc\\.)?abstractmethod"]
 
 [tool.mypy]

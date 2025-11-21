@@ -130,7 +130,7 @@ The CLI provides several commands to manage your configuration:
 
 <div class="only-light">
 
-```{typer} eyconf.docs_cli_example:app.config
+```{typer} example:app.config
 ---
 prog: config
 theme: night_owlish
@@ -143,7 +143,7 @@ width: 80
 
 <div class="only-dark">
 
-```{typer} eyconf.docs_cli_example:app.config
+```{typer} example:app.config
 ---
 prog: config
 theme: dimmed_monokai
