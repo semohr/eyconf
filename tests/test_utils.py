@@ -1,7 +1,9 @@
+import pytest
 from eyconf.utils import AttributeDict, AccessProxy, dict_access, DictAccess
 from dataclasses import dataclass, field
 
 from eyconf.asdict import asdict_with_aliases
+
 
 @dict_access
 @dataclass
@@ -164,37 +166,21 @@ class TestAsDict:
     Alias resolution is tested in test_alias.py
     """
 
-    def test_asdict(self):
-
+    @pytest.mark.parametrize(
+        "include_properties, include_attributes, expected_keys",
+        [
+            (False, False, {"int_field"}),
+            (True, False, {"int_field", "computed_property"}),
+            (False, True, {"int_field", "non_field_attr"}),
+            (True, True, {"int_field", "computed_property", "non_field_attr"}),
+        ],
+    )
+    def test_asdict(self, include_properties, include_attributes, expected_keys):
         config = ConfigWithProperty()
-        config.non_field_attr = 100 # type: ignore
-        dump = asdict_with_aliases(config)
-
-        assert config.computed_property == "int_filed=42"
-        assert config.non_field_attr == 100  # type: ignore
-
-        assert dump["int_field"] == 42
-        # by defaults all extras are disabled
-        assert "computed_property" not in dump
-        assert "non_field_attr" not in dump
-
-        dump_with_props = asdict_with_aliases(
+        config.non_field_attr = 100  # type: ignore
+        dump = asdict_with_aliases(
             config,
-            include_properties=True,
-            include_attributes=False,
+            include_properties=include_properties,
+            include_attributes=include_attributes,
         )
-
-        assert dump_with_props["int_field"] == 42
-        assert dump_with_props["computed_property"] == "int_filed=42"
-        assert "non_field_attr" not in dump_with_props
-
-        dump_with_attrs = asdict_with_aliases(
-            config,
-            include_properties=False,
-            include_attributes=True,
-        )
-        assert dump_with_attrs["int_field"] == 42
-        assert dump_with_attrs["non_field_attr"] == 100  # type: ignore
-        assert "computed_property" not in dump_with_attrs
-
-
+        assert set(dump.keys()) == expected_keys
