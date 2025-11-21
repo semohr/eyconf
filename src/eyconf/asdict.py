@@ -142,22 +142,27 @@ def _asdict_inner(obj, **kwargs):
         #   namedtuples, we could no longer call asdict() on a data
         #   structure where a namedtuple was used as a dict key.
 
-        return type(obj)(*[_asdict_inner(v, dict_factory) for v in obj])
+        return type(obj)(*[_asdict_inner(v, dict_factory=dict_factory) for v in obj])
     elif isinstance(obj, (list, tuple)):
         # Assume we can create an object of this type by passing in a
         # generator (which is not true for namedtuples, handled
         # above).
-        return type(obj)(_asdict_inner(v, dict_factory) for v in obj)
+        return type(obj)(_asdict_inner(v, dict_factory=dict_factory) for v in obj)
     elif isinstance(obj, dict):
         if hasattr(type(obj), "default_factory"):
             # obj is a defaultdict, which has a different constructor from
             # dict as it requires the default_factory as its first arg.
             result = type(obj)(getattr(obj, "default_factory"))  # type: ignore
             for k, v in obj.items():
-                result[_asdict_inner(k, dict_factory)] = _asdict_inner(v, dict_factory)
+                result[_asdict_inner(k, dict_factory=dict_factory)] = _asdict_inner(
+                    v, dict_factory=dict_factory
+                )
             return result
         return type(obj)(
-            (_asdict_inner(k, dict_factory), _asdict_inner(v, dict_factory))
+            (
+                _asdict_inner(k, dict_factory=dict_factory),
+                _asdict_inner(v, dict_factory=dict_factory),
+            )
             for k, v in obj.items()
         )
     else:
