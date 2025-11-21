@@ -19,6 +19,9 @@
     <a href="https://github.com/semohr/eyconf/blob/main/LICENSE">
         <img alt="License: GPL v3" src="https://img.shields.io/badge/License-GPL%20v3-blue.svg?style=flat-square" />
     </a>
+    <a href="https://codecov.io/github/semohr/eyconf" > 
+        <img src="https://codecov.io/github/semohr/eyconf/graph/badge.svg?token=JJVCY9H6QR"/> 
+    </a>
 </p>
 
 
