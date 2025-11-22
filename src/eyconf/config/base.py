@@ -21,7 +21,7 @@ from typing import (
 from eyconf.access_proxy import AttributeDict
 from eyconf.decorators import check_allows_additional
 from eyconf.generate_yaml import dataclass_to_yaml
-from eyconf.type_utils import get_type_hints_resolve_namespace
+from eyconf.type_utils import get_type_hints_resolve_namespace, is_dataclass_type
 from eyconf.utils import (
     dataclass_from_dict,
 )
@@ -51,6 +51,9 @@ class EYConfBase(Generic[D]):
         data: dict | D,
         schema: type[D] | None = None,
     ):
+        if is_dataclass_type(data):
+            raise ValueError("Data must be a dict or datacalss instance, not schema!")
+
         if schema is not None:
             self._schema = schema
         else:

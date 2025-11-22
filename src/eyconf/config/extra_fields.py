@@ -3,6 +3,7 @@ from dataclasses import asdict, is_dataclass
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from eyconf.access_proxy import AccessProxy, AttributeDict
+from eyconf.type_utils import is_dataclass_type
 from eyconf.utils import iter_dataclass_type, merge_dicts
 from eyconf.validation import validate
 from eyconf.validation._to_json import to_json_schema
@@ -35,6 +36,9 @@ class EYConfExtraFields(EYConfBase[D]):
         data: dict | D,
         schema: type[D] | None = None,
     ):
+        if is_dataclass_type(data):
+            raise ValueError("Data must be a dict or datacalss instance, not schema!")
+
         if schema is not None:
             self._schema = schema
         else:

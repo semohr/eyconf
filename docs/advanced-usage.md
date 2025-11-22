@@ -66,8 +66,10 @@ config = EYConfBase(data=config, schema=ConfigSchema)
 
 ## Dict style access
 
-While we do not recommend using dict style access to configuration values, as you lose type safety and autocompletion, it is still possible to access configuration values using dict style access if you 
+While we do not recommend using dict style access to configuration values, as you lose type safety and autocompletion, it is still possible to access configuration values using dict style access if you
 really need or want to.
+
+A common usecase is to work around reserved keywords in Python. The yaml you need to work with might contain reserved `import` or `class`.
 
 To do so you can either use our utility decorator `@dict_access` or create a `__getitem__` method in your dataclass to convert your dataclass schema into a dictionary-like object:
 
@@ -182,4 +184,43 @@ port: 8080
 # Whether to use SSL
 # default: false
 use_ssl: false
+```
+
+## Additional Fields
+
+Sometimes you might want to validate only part of a schema, e.g. when building on existing yaml or a third-party tool.
+
+For that, we provide the `@allow_additional` decorator, which can be used to mark dataclasses as allowing additional fields not defined in the schema.
+
+```python
+from dataclasses import dataclass
+from eyconf.decorators import allow_additional
+from eyconf.validation import validate
+
+@allow_additional
+@dataclass
+class Config:
+    known_field: int = 42
+
+config = Config()
+config.extra_field = "I am extra"
+validate(config, Config)  # Does not raise
+```
+
+Alternatively, you can use the `EYConfExtraFields` class if you want to allow additional fields globally for your configuration. This also enables dict-style access.
+
+```python
+from dataclasses import dataclass
+from eyconf.config import EYConfExtraFields
+
+@dataclass
+class Config:
+    known_field: int = 42
+
+config = EYConfExtraFields(Config())
+config.data.extra_field = 43
+
+print(config.data["extra_field"]) # 43
+print(config.data.extra_field)    # 43
+print(config.extra_data)          # {'extra_field': 43}
 ```
