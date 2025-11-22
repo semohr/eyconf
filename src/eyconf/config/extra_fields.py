@@ -2,7 +2,8 @@ import logging
 from dataclasses import asdict, is_dataclass
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
-from eyconf.utils import AccessProxy, AttributeDict, iter_dataclass_type, merge_dicts
+from eyconf.access_proxy import AccessProxy, AttributeDict
+from eyconf.utils import iter_dataclass_type, merge_dicts
 from eyconf.validation import validate
 from eyconf.validation._to_json import to_json_schema
 

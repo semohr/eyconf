@@ -1,11 +1,9 @@
 from collections.abc import Sequence
 from typing import Annotated
 import pytest
+from eyconf.access_proxy import AccessProxy, AttributeDict
+from eyconf.decorators import DictAccess, dict_access
 from eyconf.utils import (
-    AttributeDict,
-    AccessProxy,
-    dict_access,
-    DictAccess,
     iter_dataclass_type,
 )
 from dataclasses import dataclass, field

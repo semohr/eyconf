@@ -6,7 +6,8 @@ from typing import ClassVar
 import pytest
 from eyconf import EYConfBase
 
-from eyconf.utils import AttributeDict
+from eyconf.access_proxy import AttributeDict
+from eyconf.decorators import allow_additional
 from eyconf.validation import MultiConfigurationError
 
 
@@ -16,9 +17,10 @@ class Config42:
     str_field: str = "FortyTwo!"
 
 
+@allow_additional
 @dataclass
 class Config42AllowAdditional(Config42):
-    __allow_additional: ClassVar[bool] = True
+    pass
 
 
 @dataclass

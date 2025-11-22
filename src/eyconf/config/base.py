@@ -18,11 +18,11 @@ from typing import (
     cast,
 )
 
+from eyconf.access_proxy import AttributeDict
+from eyconf.decorators import check_allows_additional
 from eyconf.generate_yaml import dataclass_to_yaml
 from eyconf.type_utils import get_type_hints_resolve_namespace
 from eyconf.utils import (
-    AttributeDict,
-    check_allows_additional,
     dataclass_from_dict,
 )
 from eyconf.validation import to_json_schema, validate, validate_json

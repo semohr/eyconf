@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 import pytest
 from eyconf.config import EYConfExtraFields
-from eyconf.utils import AccessProxy
+from eyconf.access_proxy import AccessProxy
 
 
 @dataclass

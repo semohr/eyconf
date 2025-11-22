@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 
-from typing import Any, ClassVar, TypeVar
+from typing import Any, TypeVar
 import pytest
 from eyconf import EYConfBase
+from eyconf.asdict import asdict_with_aliases
 from eyconf.config.extra_fields import EYConfExtraFields
-from eyconf.utils import AttributeDict, DictAccess, asdict_with_aliases, dict_access
+from eyconf.access_proxy import AttributeDict
+from eyconf.decorators import allow_additional, dict_access, DictAccess
 from eyconf.validation import (
     MultiConfigurationError,
     validate,
@@ -45,12 +47,13 @@ class AliasConfig:
     str_field: str = "FortyTwo!"
 
 
+@allow_additional
 @dataclass
 class AliasConfigAdditional:
     attr_field: int = field(metadata={"alias": "dict_field"})
     str_field: str = "FortyTwo!"
 
-    __allow_additional: ClassVar[bool] = True
+    # __allow_additional: ClassVar[bool] = True
 
 
 @dataclass

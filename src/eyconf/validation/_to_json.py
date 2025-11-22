@@ -11,8 +11,8 @@ from jsonschema import Draft202012Validator
 from typing_extensions import NotRequired
 
 from eyconf.constants import primitive_type_mapping
+from eyconf.decorators import check_allows_additional
 from eyconf.type_utils import get_type_hints_resolve_namespace
-from eyconf.utils import check_allows_additional
 
 SchemaType = dict[str, Any] | dict[str, str] | dict[Any, Any]
 
