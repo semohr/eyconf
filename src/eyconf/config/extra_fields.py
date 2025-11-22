@@ -54,10 +54,7 @@ class EYConfExtraFields(EYConfBase[D]):
                 )
 
         # Create schema, raise if Schema is invalid
-        self._json_schema = to_json_schema(
-            self._schema,
-            allow_additional=True,
-        )
+        self._json_schema = to_json_schema(self._schema)
 
         # Will raise ConfigurationError if the data does not comply with the schema
         validate(data, self._json_schema)

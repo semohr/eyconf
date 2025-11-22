@@ -5,7 +5,8 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, ClassVar, TypeVar
 import pytest
 from eyconf import EYConfBase
-from eyconf.utils import DictAccess, asdict_with_aliases, dict_access
+from eyconf.config.extra_fields import EYConfExtraFields
+from eyconf.utils import AttributeDict, DictAccess, asdict_with_aliases, dict_access
 from eyconf.validation import (
     MultiConfigurationError,
     validate,
@@ -129,6 +130,24 @@ class TestAliasWithDictAccess:
         assert isinstance(config.data, DictAccess)
 
         # By dict is inverted
+        assert config.data["dict_field"] == 42
+        with pytest.raises(KeyError):
+            config.data["attr_field"]
+
+    def test_extra_fields_dict_alias_access(self):
+        config = EYConfExtraFields(AliasDictConfig(attr_field=42))
+
+        assert config.data.attr_field == 42
+
+        # Currently our EYConfExtraFields:
+        # - always allows dict access
+        # - allows arbitrary attribute access
+        # - this is somewhat inconsistent with EYConfBase behavior, where
+        # if we have an alias, we do not allow access via the alias as attribute
+        assert isinstance(config.data.dict_field, AttributeDict)  # type: ignore
+
+        assert isinstance(config.data, DictAccess)
+
         assert config.data["dict_field"] == 42
         with pytest.raises(KeyError):
             config.data["attr_field"]

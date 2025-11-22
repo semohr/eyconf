@@ -31,6 +31,57 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 D = TypeVar("D", bound="DataclassInstance")
+T = TypeVar("T")
+
+
+@runtime_checkable
+class DictAccess(Protocol):
+    """Protocol for dict-like access."""
+
+    def __getitem__(self, key: str) -> Any: ...  # noqa: D105
+
+
+def dict_access(cls: type[T]) -> type[T]:
+    """Class decorator to add dict-like access to class attributes.
+
+    Can be used to add `dict`-like access to any class, allowing
+    attribute access via the `obj['attribute']` syntax.
+
+    Use with care, dict-style access does not provide any type safety
+    and will not be checked by static type checkers.
+
+    Usage:
+
+    ```python
+    @dict_access
+    class MySchema:
+        forty_two: int = 42
+
+    obj = MySchema()
+    assert isinstance(obj, DictAccess)
+    print(obj['forty_two'])  # Outputs: 42
+    ```
+    """
+
+    def __getitem__(self, key: str) -> Any:
+        # for dict access we _only_ want to allow the aliases,
+        # not the attribute names!
+        aliases = {
+            f.metadata["alias"]: f.name for f in fields(self) if "alias" in f.metadata
+        }
+        if key in aliases.keys():
+            return getattr(self, aliases[key])
+        elif key in aliases.values():
+            _suggestion = next((k for k, v in aliases.items() if v == key), None)
+            raise KeyError(
+                "If an alias is defined, subscripting is only allowed "
+                + f"using the alias. Use ['{_suggestion}'] instead of ['{key}']!"
+            )
+
+        return getattr(self, key)
+
+    setattr(cls, "__getitem__", __getitem__)
+    return cls
 
 
 @dataclass
@@ -107,6 +158,7 @@ class AttributeDict:
         return bool(self.__dict__)
 
 
+@dict_access
 class AccessProxy(Generic[D]):
     """Proxy to access attributes dynamically."""
 
@@ -129,10 +181,6 @@ class AccessProxy(Generic[D]):
             return getattr(self._data, name)
         except AttributeError:
             return getattr(self._extra_data, name)
-
-    def __getitem__(self, key: str) -> Any:
-        """Get item dynamically."""
-        return self.__getattr__(key)
 
     def __setattr__(self, name: str, value: Any):
         """Set attribute on either the typed data or additional data."""
@@ -264,59 +312,6 @@ def _dataclass_from_dict_inner(target_type: type, data: Any) -> Any:
 
     # Handle primitive types
     return data
-
-
-T = TypeVar("T")
-
-
-@runtime_checkable
-class DictAccess(Protocol):
-    """Protocol for dict-like access."""
-
-    def __getitem__(self, key: str) -> Any: ...  # noqa: D105
-
-
-def dict_access(cls: type[T]) -> type[T]:
-    """Class decorator to add dict-like access to class attributes.
-
-    Can be used to add `dict`-like access to any class, allowing
-    attribute access via the `obj['attribute']` syntax.
-
-    Use with care, dict-style access does not provide any type safety
-    and will not be checked by static type checkers.
-
-    Usage:
-
-    ```python
-    @dict_access
-    class MySchema:
-        forty_two: int = 42
-
-    obj = MySchema()
-    assert isinstance(obj, DictAccess)
-    print(obj['forty_two'])  # Outputs: 42
-    ```
-    """
-
-    def __getitem__(self, key: str) -> Any:
-        # for dict access we _only_ want to allow the aliases,
-        # not the attribute names!
-        aliases = {
-            f.metadata["alias"]: f.name for f in fields(self) if "alias" in f.metadata
-        }
-        if key in aliases.keys():
-            return getattr(self, aliases[key])
-        elif key in aliases.values():
-            _suggestion = next((k for k, v in aliases.items() if v == key), None)
-            raise KeyError(
-                "If an alias is defined, subscripting is only allowed "
-                + f"using the alias. Use ['{_suggestion}'] instead of ['{key}']!"
-            )
-
-        return getattr(self, key)
-
-    setattr(cls, "__getitem__", __getitem__)
-    return cls
 
 
 def check_allows_additional(schema: D | type[D]) -> bool:
