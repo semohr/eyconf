@@ -234,10 +234,10 @@ class ConfigExtra(Config[D]):
         """Get the extra data as an AttributeDict."""
         return self._extra_data
 
-    def to_dict(self, include_additional: bool = True) -> dict:
+    def to_dict(self, extra_fields: bool = True) -> dict:
         """Get the full configuration data as a dictionary, including extra fields."""
         data = asdict(self._data)
-        if include_additional:
+        if extra_fields:
             data = merge_dicts(data, self.extra_data.to_dict())
         return data
 
