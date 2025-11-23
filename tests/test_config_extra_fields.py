@@ -165,3 +165,185 @@ class TestToDict:
         # Should also be possible with the .extra_data
         extra_dict = conf42.extra_data.to_dict()
         assert extra_dict == {"new_field": "New Value"}
+class TestAttributeDict:
+    def test_init(self):
+        attr_dict = AttributeDict(**{"foo": "bar", "nested": {"level": 42}})
+        assert isinstance(attr_dict, AttributeDict)
+        assert attr_dict.foo == "bar"
+
+        assert isinstance(attr_dict.nested, AttributeDict)
+        assert attr_dict.nested.level == 42
+
+    def test_attribute_assignment(self):
+        attr_dict = AttributeDict()
+        attr_dict.foo = "bar"
+        assert attr_dict.foo == "bar"
+
+    def test_attribute_assignment_nested(self):
+        attr_dict = AttributeDict()
+        attr_dict.nested.level = 42
+
+        assert attr_dict.nested.level == 42
+
+    def test_item_assignment(self):
+        attr_dict = AttributeDict()
+        attr_dict["foo"] = "bar"
+        assert attr_dict["foo"] == "bar"
+
+    def test_item_assignment_nested(self):
+        attr_dict = AttributeDict()
+        attr_dict["nested"] = {}
+        attr_dict["nested"]["level"] = 42
+
+        assert attr_dict["nested"]["level"] == 42
+
+    def test_to_dict(self):
+        attr_dict = AttributeDict()
+        attr_dict.foo = "bar"
+        attr_dict.nested.level = 42
+
+        expected = {
+            "foo": "bar",
+            "nested": {
+                "level": 42,
+            },
+        }
+        assert attr_dict.to_dict() == expected
+
+    @pytest.mark.parametrize(
+        "data,expected",
+        [
+            ({"foo": "bar"}, True),
+            ({}, False),
+        ],
+    )
+    def test_bool_conversion(self, data, expected):
+        attr_dict = AttributeDict(**data)
+        assert bool(attr_dict) is expected
+
+    def test_deepcopy(self):
+        attr_dict = AttributeDict()
+        attr_dict.foo = "bar"
+        attr_dict.nested.level = 42
+
+        copied = deepcopy(attr_dict)
+
+        assert copied.foo == "bar"
+        assert copied.nested.level == 42
+
+        # Modify original to ensure deep copy
+        attr_dict.foo = "changed"
+        attr_dict.nested.level = 100
+
+        assert copied.foo == "bar"
+        assert copied.nested.level == 42
+
+    def test_repr_str(self):
+        attr_dict = AttributeDict()
+        attr_dict.foo = "bar"
+        attr_dict.nested.level = 42
+
+        repr_str = repr(attr_dict)
+        str_str = str(attr_dict)
+
+        expected_dict = {
+            "foo": "bar",
+            "nested": {
+                "level": 42,
+            },
+        }
+
+        assert repr_str == f"AttributeDict({expected_dict})"
+        assert str_str == str(expected_dict)
+
+    @pytest.mark.parametrize(
+        "data,other,expected",
+        [
+            (
+                AttributeDict(**{"foo": "bar"}),
+                AttributeDict(**{"foo": "bar"}),
+                True,
+            ),
+            (
+                AttributeDict(**{"foo": "bar"}),
+                AttributeDict(**{"foo": "different"}),
+                False,
+            ),
+            (
+                AttributeDict(**{"foo": "bar"}),
+                {"foo": "bar"},
+                True,
+            ),
+            (
+                AttributeDict(**{"foo": "bar"}),
+                {"foo": "different"},
+                False,
+            ),
+            (
+                AttributeDict(**{"foo": "bar"}),
+                "not a dict",
+                False,
+            ),
+        ],
+    )
+    def test_equality(self, data, other, expected):
+        if expected:
+            assert data == other
+        else:
+            assert data != other
+
+
+class TestAccessProxy:
+    @pytest.fixture
+    def proxy(self):
+        config_data = Config42()
+        extra_data = AttributeDict()
+        return AccessProxy(
+            config_data,
+            extra_data,
+        )
+
+    def test_attribute_assignment(self, proxy):
+        proxy.int_field = 100
+        proxy.new_field = "baz"
+
+        assert proxy.int_field == 100
+        assert proxy.new_field == "baz"
+        assert proxy._data.int_field == 100
+        assert proxy._extra_data.new_field == "baz"
+
+    def test_attribute_assignment_nested(self, proxy):
+        proxy.nested.level = 42
+        assert proxy.nested.level == 42
+        assert proxy._extra_data.nested.level == 42
+
+    def test_item_assignment(self, proxy):
+        proxy["int_field"] = 100
+        proxy["new_field"] = "baz"
+
+        assert proxy["int_field"] == 100
+        assert proxy["new_field"] == "baz"
+
+    def test_item_assignment_nested(self, proxy):
+        proxy["nested"] = {}
+        proxy["nested"]["level"] = 42
+
+        assert proxy["nested"]["level"] == 42
+        assert proxy._extra_data.nested.level == 42
+
+    def test_to_dict(self):
+        config_data = Config42()
+        extra_data = AttributeDict()
+        proxy = AccessProxy(
+            config_data,
+            extra_data,
+        )
+        proxy.foo = "bar"
+
+        result = proxy.to_dict()
+        expected = {
+            "int_field": 42,
+            "str_field": "FortyTwo!",
+            "foo": "bar",
+        }
+        assert result == expected
