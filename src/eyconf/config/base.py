@@ -137,6 +137,8 @@ class Config(Generic[D]):
                         setattr(target, key, nested)
                     else:
                         # Primitives and direct assignments
+                        # Can only be reached if a dynamic field is added
+                        # to the dataclass instance
                         setattr(target, key, value)
                 else:
                     # Non-schema fields

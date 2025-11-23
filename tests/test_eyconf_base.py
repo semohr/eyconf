@@ -108,6 +108,13 @@ class TestCreation:
         with pytest.raises(AttributeError):
             conf.data.extra_field  # type: ignore
 
+    def test_init_invalid(self):
+        with pytest.raises(ValueError):
+            Config(
+                ConfigNested,  # type: ignore
+                ConfigNested,
+            )
+
 
 class TestUpdate:
     """Update should allow to apply partial updates to the configuration,
@@ -165,6 +172,16 @@ class TestUpdate:
         # for that, we have ConfigExtra.
         with pytest.raises(AttributeError):
             conf42_add.update({"int_field": 100, "new_field": "I am new!"})
+
+    def test_dynamic_fields(self):
+        """Test that dynamic fields are not affected by update."""
+        conf42_add = Config(Config42AllowAdditional(), schema=Config42AllowAdditional)
+        conf42_add.data.dynamic_field = "I am dynamic!"  # type: ignore
+
+        conf42_add.update({"int_field": 100, "dynamic_field": "I am still dynamic!"})
+
+        assert conf42_add.data.int_field == 100
+        assert conf42_add.data.dynamic_field == "I am still dynamic!"  # type: ignore
 
 
 class TestOverwrite:
@@ -255,6 +272,11 @@ class TestConverters:
             "str_field": "FortyTwo!",
         }
         assert conf42.to_dict() == expected
+
+    def test_to_yaml(self, conf42: Config[Config42]):
+        yaml_str = conf42.to_yaml()
+        assert "int_field: 42" in yaml_str
+        assert "str_field: FortyTwo!" in yaml_str
 
 
 class TestPrintingUtils:
