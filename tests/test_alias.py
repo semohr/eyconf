@@ -7,7 +7,7 @@ import pytest
 from eyconf import EYConfBase
 from eyconf.asdict import asdict_with_aliases
 from eyconf.config.extra_fields import EYConfExtraFields
-from eyconf.access_proxy import AttributeDict
+from eyconf.config.extra_fields import AttributeDict
 from eyconf.decorators import allow_additional, dict_access, DictAccess
 from eyconf.validation import (
     MultiConfigurationError,

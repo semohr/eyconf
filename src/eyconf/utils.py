@@ -1,23 +1,16 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator, Sequence
 from dataclasses import fields, is_dataclass
 from types import NoneType, UnionType
 from typing import (
     TYPE_CHECKING,
-    Annotated,
     Any,
     TypeVar,
     get_args,
     get_origin,
     get_type_hints,
 )
-
-# for some reason typing  Sequence and abc sequence are not the same type
-from typing import Sequence as TypingSequence  # noqa: UP035
-
-from eyconf.type_utils import get_type_hints_resolve_namespace, is_dataclass_type
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -132,50 +125,3 @@ def _dataclass_from_dict_inner(target_type: type, data: Any) -> Any:
 
     # Handle primitive types
     return data
-
-
-def iter_dataclass_type(schema: type[D]) -> Iterator[type[DataclassInstance]]:
-    """Iterate over all dataclass nested instances in the given dataclass type.
-
-    Duplicate types are automatically handled by using a set to track visited types.
-
-    Yields
-    ------
-    DataclassInstance
-        Each nested dataclass instance found within the schema (also the root).
-    """
-    visited = set()
-    stack = [schema]
-
-    def _add_type_to_stack(*t: type[Any]) -> None:
-        """Add type to stack if it is a dataclass and not yet visited."""
-        for item in t:
-            if is_dataclass_type(item) and id(item) not in visited:
-                stack.append(item)
-
-    while stack:
-        current_type = stack.pop()
-        type_id = id(current_type)
-        # Skip if we've already visited this type
-        if type_id in visited:
-            continue
-
-        visited.add(type_id)
-        yield current_type
-
-        # Process fields of the current dataclass
-        type_hints = get_type_hints_resolve_namespace(current_type, include_extras=True)
-        for _, field_type in type_hints.items():
-            origin = get_origin(field_type)
-
-            if origin is Annotated:
-                # Unpack Annotated types
-                field_type = get_args(field_type)[0]
-                origin = get_origin(field_type)
-
-            if origin in {UnionType, list, tuple, set, Sequence, TypingSequence, dict}:
-                # Handle collection types
-                _add_type_to_stack(*get_args(field_type))
-
-            if is_dataclass_type(field_type):
-                _add_type_to_stack(field_type)

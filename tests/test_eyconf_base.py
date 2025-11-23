@@ -6,7 +6,7 @@ from typing import ClassVar
 import pytest
 from eyconf import EYConfBase
 
-from eyconf.access_proxy import AttributeDict
+from eyconf.config.extra_fields import AttributeDict
 from eyconf.decorators import allow_additional
 from eyconf.validation import MultiConfigurationError
 
