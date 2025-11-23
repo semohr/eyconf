@@ -187,17 +187,8 @@ class Config(Generic[D]):
         """Get the configuration data."""
         return self._data
 
-    def to_dict(self, include_additional: bool = False) -> dict:
-        """Convert the configuration data to a dictionary.
-
-        Parameters
-        ----------
-        include_additional : bool
-            Whether to include extra data not part of the schema.
-        """
-        if include_additional:
-            # A bit hacky but works for now
-            return json.loads(json.dumps(self._data, default=lambda o: o.__dict__))
+    def to_dict(self) -> dict:
+        """Convert the configuration data to a dictionary."""
         return asdict(self._data)
 
     def to_yaml(self) -> str:

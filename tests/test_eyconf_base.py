@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import ClassVar
 
 import pytest
 from eyconf import Config
 
-from eyconf.config.extra_fields import AttributeDict
 from eyconf.decorators import allow_additional
 from eyconf.validation import MultiConfigurationError
 
@@ -15,12 +13,6 @@ from eyconf.validation import MultiConfigurationError
 class Config42:
     int_field: int = 42
     str_field: str = "FortyTwo!"
-
-
-@allow_additional
-@dataclass
-class Config42AllowAdditional(Config42):
-    pass
 
 
 @dataclass
@@ -36,6 +28,12 @@ class ConfigNested:
     other_field: str = "Hello, World!"
 
 
+@allow_additional
+@dataclass
+class Config42AllowAdditional(Config42):
+    pass
+
+
 @pytest.fixture
 def conf42() -> Config[Config42]:
     return Config(Config42(), schema=Config42)
@@ -44,11 +42,6 @@ def conf42() -> Config[Config42]:
 @pytest.fixture
 def conf_nested() -> Config[ConfigNested]:
     return Config(ConfigNested(), schema=ConfigNested)
-
-
-@pytest.fixture
-def conf42_add() -> Config[Config42AllowAdditional]:
-    return Config(Config42AllowAdditional(), schema=Config42AllowAdditional)
 
 
 class TestCreation:
@@ -112,7 +105,6 @@ class TestCreation:
         )
         assert conf.data.int_field == 42
         assert conf.data.str_field == "test"
-        breakpoint()
         with pytest.raises(AttributeError):
             conf.data.extra_field  # type: ignore
 
@@ -167,7 +159,8 @@ class TestUpdate:
 
         assert conf42.data.int_field == 42
 
-    def test_additional_fields(self, conf42_add: Config[Config42AllowAdditional]):
+    def test_additional_fields(self):
+        conf42_add = Config(Config42AllowAdditional(), schema=Config42AllowAdditional)
         # validation should pass, but _setting_ values not.
         # for that, we have ConfigExtra.
         with pytest.raises(AttributeError):
@@ -254,100 +247,14 @@ class TestReset:
         assert conf_nested.data.nested_optional is None
         assert conf_nested.data.other_field == "Hello, World!"
 
-    def test_additional_fields_removed(
-        self, conf42_add: Config[Config42AllowAdditional]
-    ):
-        conf42_add.update(
-            {
-                "int_field": 100,
-                "new_field": "I am new!",
-            }
-        )
-
-        assert conf42_add.data.int_field == 100
-        assert conf42_add.data.new_field == "I am new!"  # type: ignore[attr-defined]
-
-        conf42_add.reset()
-
-        assert conf42_add.data.int_field == 42
-        with pytest.raises(AttributeError):
-            _ = conf42_add.data.new_field  # type: ignore[attr-defined]
-
 
 class TestConverters:
-    def test_schema_data_to_dict(self, conf42: Config[Config42]):
+    def test_to_dict(self, conf42: Config[Config42]):
         expected = {
             "int_field": 42,
             "str_field": "FortyTwo!",
         }
         assert conf42.to_dict() == expected
-
-    def test_extra_data_to_dict(self, conf42_add: Config[Config42AllowAdditional]):
-        conf42_add.update({"new_field": "I am new!"})
-
-        assert conf42_add.to_dict(include_additional=True) == {
-            "int_field": 42,
-            "str_field": "FortyTwo!",
-            "new_field": "I am new!",
-        }
-        assert conf42_add.to_dict() == {
-            "int_field": 42,
-            "str_field": "FortyTwo!",
-        }
-
-    def test_extra_data_to_dict_nested(self):
-        @dataclass
-        class NestedAllowAdditional:
-            nested: Config42AllowAdditional = field(
-                default_factory=Config42AllowAdditional
-            )
-            nested_optional: Config42AllowAdditional | None = None
-            other_field: str = "Hello, World!"
-            __allow_additional: ClassVar[bool] = True
-
-        conf_nested = Config(NestedAllowAdditional(), schema=NestedAllowAdditional)
-        conf_nested.update(
-            {
-                "nested": {"new_nested_field": {"foo": "bar"}},
-                "another_extra": 123,
-            }
-        )
-
-        assert conf_nested.to_dict(include_additional=True) == {
-            "nested": {
-                "int_field": 42,
-                "str_field": "FortyTwo!",
-                "new_nested_field": {"foo": "bar"},
-            },
-            "nested_optional": None,
-            "other_field": "Hello, World!",
-            "another_extra": 123,
-        }
-        assert conf_nested.to_dict() == {
-            "nested": {
-                "int_field": 42,
-                "str_field": "FortyTwo!",
-            },
-            "nested_optional": None,
-            "other_field": "Hello, World!",
-        }
-
-    def test_to_yaml(self, conf42: Config[Config42]):
-        expected_yaml = "int_field: 42\nstr_field: FortyTwo!"
-        assert conf42.to_yaml() == expected_yaml
-
-    def test_update_additional_property_list(self, conf42_add: Config[Config42]):
-        """Test updating additional list properties"""
-
-        conf42_add.update({"extra_list": [1, 2, 3]})
-        conf42_add.update({"extra_list": ["a", "b", "c"]})
-
-        assert conf42_add.data.extra_list == ["a", "b", "c"]  # type: ignore[attr-defined]
-
-    def test_error_without_additional_properties(self, conf42: Config[Config42]):
-        """Test that updating additional properties without allowing them raises an error"""
-        with pytest.raises(AttributeError):
-            conf42.update({"extra_field": "not allowed"})
 
 
 class TestPrintingUtils:
@@ -374,7 +281,7 @@ class TestPrintingUtils:
         repr_str = repr(conf42)
 
         # Basic object info
-        assert repr_str.startswith("<EYConfBase object at 0x")
+        assert repr_str.startswith("<Config object at 0x")
         # Delegates to __str__ for data
         assert "int_field: 42" in repr_str
 

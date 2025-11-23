@@ -43,9 +43,6 @@ def dataclass_from_dict(in_type: type[D], data: dict) -> D:
 
 def _dataclass_from_dict_inner(target_type: type, data: Any) -> Any:
     """Inner function that handles Union types and may return None."""
-    # avoid circular import
-    from eyconf.decorators import check_allows_additional
-
     # Handle Union types
     origin = get_origin(target_type)
     if origin is UnionType:
@@ -92,14 +89,11 @@ def _dataclass_from_dict_inner(target_type: type, data: Any) -> Any:
 
         try:
             res = target_type(**found_fields)  # type: ignore[bad-instantiation]
-            if check_allows_additional(target_type):
-                for key, value in additional_fields.items():
-                    setattr(res, key, value)
-            elif len(additional_fields) > 0:
-                raise TypeError(
-                    f"Found additional fields {list(additional_fields.keys())}. "
-                    + "Consider using `__allow_additional: ClassVar[bool] = True`"
-                    + " in the dataclass to allow them."
+            if len(additional_fields) > 0:
+                log.warning(
+                    f"Additional fields {list(additional_fields.keys())} "
+                    f"found for dataclass {target_type.__name__} but "
+                    "not in schema and will be ignored."
                 )
             return res
         except TypeError as e:
