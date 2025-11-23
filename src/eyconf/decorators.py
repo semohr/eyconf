@@ -28,11 +28,14 @@ class DictAccess(Protocol):
     def __getitem__(self, key: str) -> Any: ...  # noqa: D105
 
 
-def _get_item_resolve_alias(self: DataclassInstance, key: str) -> Any:
+def _aliases_map(cls: DataclassInstance) -> dict[str, str]:
+    """Get mapping of aliases to field names for a dataclass."""
+    return {f.metadata["alias"]: f.name for f in fields(cls) if "alias" in f.metadata}
+
+
+def _get_attr_resolve_alias(self: DataclassInstance, key: str) -> Any:
     """Get item resolving aliases."""
-    aliases = {
-        f.metadata["alias"]: f.name for f in fields(self) if "alias" in f.metadata
-    }
+    aliases = _aliases_map(self)
     if key in aliases.keys():
         return getattr(self, aliases[key])
     elif key in aliases.values():
@@ -45,12 +48,9 @@ def _get_item_resolve_alias(self: DataclassInstance, key: str) -> Any:
     return getattr(self, key)
 
 
-def _set_item_resolve_alias(self: DataclassInstance, key: str, value: Any) -> None:
+def _set_attr_resolve_alias(self: DataclassInstance, key: str, value: Any) -> None:
     """Set item resolving aliases."""
-    aliases = {
-        f.metadata["alias"]: f.name for f in fields(self) if "alias" in f.metadata
-    }
-    print(aliases)
+    aliases = _aliases_map(self)
     if key in aliases.keys():
         return setattr(self, aliases[key], value)
     elif key in aliases.values():
@@ -107,9 +107,9 @@ def dict_access(
         @functools.wraps(cls)
         def wrap(target_cls: type[T]) -> type[T]:
             if getter:
-                setattr(target_cls, "__getitem__", _get_item_resolve_alias)
+                setattr(target_cls, "__getitem__", _get_attr_resolve_alias)
             if setter:
-                setattr(target_cls, "__setitem__", _set_item_resolve_alias)
+                setattr(target_cls, "__setitem__", _set_attr_resolve_alias)
             return target_cls
 
         return wrap(cls)

@@ -7,8 +7,9 @@ from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 from eyconf.asdict import asdict_with_aliases
 from eyconf.decorators import (
-    _get_item_resolve_alias,
-    _set_item_resolve_alias,
+    _aliases_map,
+    _get_attr_resolve_alias,
+    _set_attr_resolve_alias,
 )
 from eyconf.type_utils import is_dataclass_type, iter_dataclass_type
 from eyconf.utils import merge_dicts
@@ -38,9 +39,6 @@ class AttributeDict:
 
     def __getattr__(self, name: str) -> Any:
         """Get attribute dynamically. If it does not exist, we create it."""
-        if name.startswith("_"):
-            raise AttributeError(f"{name} not found")
-
         try:
             return object.__getattribute__(self, name)
         except AttributeError:
@@ -58,10 +56,16 @@ class AttributeDict:
         """Get item dynamically."""
         return self.__getattr__(key)
 
+    def __setitem__(self, key: str, value: Any) -> None:
+        """Set item dynamically."""
+        return self.__setattr__(key, value)
+
     def to_dict(self) -> dict:
         """Convert the AttributeDict to a standard dictionary."""
         result = {}
         for key, value in self.__dict__.items():
+            if key.startswith("__"):
+                continue
             if isinstance(value, AttributeDict):
                 result[key] = value.to_dict()
             else:
@@ -100,6 +104,14 @@ class AttributeDict:
         """Return False if the AttributeDict is empty, True otherwise."""
         return bool(self.__dict__)
 
+    def __eq__(self, other: Any) -> bool:
+        """Equality comparison based on the internal dictionary."""
+        if isinstance(other, AttributeDict):
+            return self.to_dict() == other.to_dict()
+        if isinstance(other, dict):
+            return self.to_dict() == other
+        return False
+
 
 class AccessProxy(Generic[D]):
     """Proxy to access attributes dynamically."""
@@ -110,6 +122,13 @@ class AccessProxy(Generic[D]):
     def __init__(self, data: D, extra_data: AttributeDict):
         self._data = data
         self._extra_data = extra_data
+
+    def to_dict(self) -> dict:
+        """Convert the AccessProxy to a standard dictionary."""
+        merged = deepcopy(self._extra_data.to_dict())
+        data_dict = deepcopy(asdict_with_aliases(self._data))
+        result = merge_dicts(data_dict, merged)
+        return result
 
     def __getattr__(self, name: str) -> Any:
         """Get attribute from either the typed data or additional data."""
@@ -134,31 +153,21 @@ class AccessProxy(Generic[D]):
             else:
                 setattr(self._extra_data, name, value)
 
-    def __delattr__(self, name: str):
-        """Delete attribute from either the typed data or additional data."""
-        if name.startswith("_"):
-            object.__delattr__(self, name)
-        else:
-            if hasattr(self._data, name):
-                delattr(self._data, name)
-            else:
-                delattr(self._extra_data, name)
-
-    def to_dict(self) -> dict:
-        """Convert the AccessProxy to a standard dictionary."""
-        merged = deepcopy(self._extra_data.to_dict())
-        data_dict = deepcopy(asdict_with_aliases(self._data))
-        result = merge_dicts(data_dict, merged)
-        return result
-
     def __getitem__(self, key: str) -> Any:
         """Get item dynamically."""
-        return _get_item_resolve_alias(self._data, key)  # type: ignore
+        # We need a bit of extra work here for alias resolution
+        aliases = _aliases_map(self._data)
+        if key in aliases.keys() or hasattr(self._data, key):
+            return _get_attr_resolve_alias(self._data, key)
+        else:
+            return getattr(self._extra_data, key)
 
     def __setitem__(self, key: str, value: Any) -> None:
         """Set item dynamically."""
-        if hasattr(self._data, key):
-            _set_item_resolve_alias(self._data, key, value)
+        # We need a bit of extra work here for alias resolution
+        aliases = _aliases_map(self._data)
+        if key in aliases.keys() or hasattr(self._data, key):
+            _set_attr_resolve_alias(self._data, key, value)
         else:
             setattr(self._extra_data, key, value)
 

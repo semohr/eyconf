@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass, field
 import pytest
 from eyconf.config import ConfigExtra
@@ -50,7 +51,7 @@ class TestDataProperties:
         conf42.data.new_field = "New Value"
         extra_data = conf42.extra_data
         assert isinstance(extra_data, AttributeDict)
-        assert extra_data.new_field == "New Value"  # type: ignore
+        assert extra_data.new_field == "New Value"
 
 
 class TestUpdate:
@@ -59,7 +60,7 @@ class TestUpdate:
 
         config.update({"unknown_field": "I am unknown!"})
 
-        assert config.data.unknown_field == "I am unknown!"  # type: ignore[attr-defined]
+        assert config.data.unknown_field == "I am unknown!"
         assert config._extra_data.unknown_field == "I am unknown!"
         with pytest.raises(AttributeError):
             _ = config._data.non_existent_field  # type: ignore[attr-defined]
@@ -132,7 +133,7 @@ class TestUpdate:
         config = ConfigExtra(Config42())
 
         config.update({"level_one": {"level_two": {"level_three": "Deep Value"}}})
-        assert config.data.level_one.level_two.level_three == "Deep Value"  # type: ignore[attr-defined]
+        assert config.data.level_one.level_two.level_three == "Deep Value"
 
 
 class TestToDict:
@@ -148,10 +149,6 @@ class TestToDict:
         }
         assert result == expected
 
-        # Should also be possible with the .data
-        result_data = conf42.data.to_dict()
-        assert result_data == expected
-
     def test_to_dict_with_extra(self, conf42: ConfigExtra[Config42]):
         conf42.data.new_field = "New Value"
         result = conf42.to_dict()
@@ -162,9 +159,15 @@ class TestToDict:
         }
         assert result == expected
 
-        # Should also be possible with the .extra_data
-        extra_dict = conf42.extra_data.to_dict()
-        assert extra_dict == {"new_field": "New Value"}
+        # Should also allow extra_fields=False
+        result_no_extra = conf42.to_dict(extra_fields=False)
+        expected_no_extra = {
+            "int_field": 42,
+            "str_field": "FortyTwo!",
+        }
+        assert result_no_extra == expected_no_extra
+
+
 class TestAttributeDict:
     def test_init(self):
         attr_dict = AttributeDict(**{"foo": "bar", "nested": {"level": 42}})

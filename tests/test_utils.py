@@ -1,8 +1,6 @@
 from collections.abc import Sequence
 from typing import Annotated
 import pytest
-from eyconf.config.extra_fields import AccessProxy
-from eyconf.config.extra_fields import AttributeDict
 from eyconf.decorators import DictAccess, dict_access
 from eyconf.type_utils import (
     iter_dataclass_type,
