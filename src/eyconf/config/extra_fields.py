@@ -6,13 +6,16 @@ from dataclasses import asdict, dataclass, is_dataclass
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 from eyconf.asdict import asdict_with_aliases
-from eyconf.decorators import dict_access
+from eyconf.decorators import (
+    _get_item_resolve_alias,
+    _set_item_resolve_alias,
+)
 from eyconf.type_utils import is_dataclass_type, iter_dataclass_type
 from eyconf.utils import merge_dicts
 from eyconf.validation import validate
 from eyconf.validation._to_json import to_json_schema
 
-from .base import EYConfBase
+from .base import Config
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -55,12 +58,12 @@ class AttributeDict:
         """Get item dynamically."""
         return self.__getattr__(key)
 
-    def as_dict(self) -> dict:
+    def to_dict(self) -> dict:
         """Convert the AttributeDict to a standard dictionary."""
         result = {}
         for key, value in self.__dict__.items():
             if isinstance(value, AttributeDict):
-                result[key] = value.as_dict()
+                result[key] = value.to_dict()
             else:
                 result[key] = value
         return result
@@ -87,18 +90,17 @@ class AttributeDict:
 
     def __repr__(self) -> str:
         """Representation of the AttributeDict."""
-        return f"AttributeDict({self.as_dict()})"
+        return f"AttributeDict({self.to_dict()})"
 
     def __str__(self) -> str:
         """Use the dict string representation."""
-        return str(self.as_dict())
+        return str(self.to_dict())
 
     def __bool__(self) -> bool:
         """Return False if the AttributeDict is empty, True otherwise."""
         return bool(self.__dict__)
 
 
-@dict_access
 class AccessProxy(Generic[D]):
     """Proxy to access attributes dynamically."""
 
@@ -142,21 +144,33 @@ class AccessProxy(Generic[D]):
             else:
                 delattr(self._extra_data, name)
 
-    def as_dict(self) -> dict:
+    def to_dict(self) -> dict:
         """Convert the AccessProxy to a standard dictionary."""
-        merged = deepcopy(self._extra_data.as_dict())
+        merged = deepcopy(self._extra_data.to_dict())
         data_dict = deepcopy(asdict_with_aliases(self._data))
         result = merge_dicts(data_dict, merged)
         return result
 
+    def __getitem__(self, key: str) -> Any:
+        """Get item dynamically."""
+        return _get_item_resolve_alias(self._data, key)  # type: ignore
 
-class EYConfExtraFields(EYConfBase[D]):
+    def __setitem__(self, key: str, value: Any) -> None:
+        """Set item dynamically."""
+        if hasattr(self._data, key):
+            _set_item_resolve_alias(self._data, key, value)
+        else:
+            setattr(self._extra_data, key, value)
+
+
+class ConfigExtra(Config[D]):
     """Configuration class that supports extra fields explicitly.
 
     This class extends the base configuration functionality to allow
     for additional fields that are not defined in the original schema.
 
-    This additional field is accessible via the `extra_data_as_dict` property.
+    This additional fields are accessible via the `extra_data` property. They
+    are merged into the schema data when accessing via the `data` property.
     """
 
     _extra_data: AttributeDict
@@ -203,12 +217,17 @@ class EYConfExtraFields(EYConfBase[D]):
             self.update(data)
 
     @property
-    def data(self) -> D:
+    def data(self) -> AccessProxy[D]:  # type: ignore
         """Get the configuration data wrapped in a dynamic accessor.
 
         Care: Instance checks will not work as expected on this property.
         """
-        return AccessProxy(self._data, self._extra_data)  # type: ignore
+        return AccessProxy(self._data, self._extra_data)
+
+    @property
+    def schema_data(self) -> D:
+        """Get the schema dataclass type excluding extra fields."""
+        return self._data
 
     @property
     def extra_data(self) -> AttributeDict:
@@ -219,10 +238,13 @@ class EYConfExtraFields(EYConfBase[D]):
         """Get the full configuration data as a dictionary, including extra fields."""
         data = asdict(self._data)
         if include_additional:
-            data = merge_dicts(data, self.extra_data.as_dict())
+            data = merge_dicts(data, self.extra_data.to_dict())
         return data
 
-    def _update_additional(self, target, key, value: Any, _current_path: list[str]):
+    def _update_additional(
+        self, target, key, value: Any, _current_path: list[str]
+    ) -> None:
+        """Handle updating additional (non-schema) fields used in `super.update`."""
         extra_data: AttributeDict = self._extra_data
         for path_part in _current_path:
             extra_data = getattr(extra_data, path_part)

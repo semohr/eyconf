@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import functools
+from collections.abc import Callable
 from dataclasses import fields, is_dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
     Protocol,
     TypeVar,
+    overload,
     runtime_checkable,
 )
 
@@ -25,7 +28,52 @@ class DictAccess(Protocol):
     def __getitem__(self, key: str) -> Any: ...  # noqa: D105
 
 
-def dict_access(cls: type[T]) -> type[T]:
+def _get_item_resolve_alias(self: DataclassInstance, key: str) -> Any:
+    """Get item resolving aliases."""
+    aliases = {
+        f.metadata["alias"]: f.name for f in fields(self) if "alias" in f.metadata
+    }
+    if key in aliases.keys():
+        return getattr(self, aliases[key])
+    elif key in aliases.values():
+        _suggestion = next((k for k, v in aliases.items() if v == key), None)
+        raise KeyError(
+            "If an alias is defined, subscripting is only allowed "
+            + f"using the alias. Use ['{_suggestion}'] instead of ['{key}']!"
+        )
+
+    return getattr(self, key)
+
+
+def _set_item_resolve_alias(self: DataclassInstance, key: str, value: Any) -> None:
+    """Set item resolving aliases."""
+    aliases = {
+        f.metadata["alias"]: f.name for f in fields(self) if "alias" in f.metadata
+    }
+    print(aliases)
+    if key in aliases.keys():
+        return setattr(self, aliases[key], value)
+    elif key in aliases.values():
+        _suggestion = next((k for k, v in aliases.items() if v == key), None)
+        raise KeyError(
+            "If an alias is defined, subscripting is only allowed "
+            + f"using the alias. Use ['{_suggestion}'] instead of ['{key}']!"
+        )
+
+    return setattr(self, key, value)
+
+
+@overload
+def dict_access(cls: type[T]) -> type[T]: ...
+@overload
+def dict_access(
+    cls: None = None, getter: bool = True, setter: bool = False
+) -> Callable[[type[T]], type[T]]: ...
+
+
+def dict_access(
+    cls: type[T] | None = None, getter: bool = True, setter: bool = False
+) -> type[T] | Callable[[type[T]], type[T]]:
     """Class decorator to add dict-like access to class attributes.
 
     Can be used to add `dict`-like access to any class, allowing
@@ -41,31 +89,35 @@ def dict_access(cls: type[T]) -> type[T]:
     class MySchema:
         forty_two: int = 42
 
+    #1 (cls) -> cls
+
+
+    @dict_access(setter=True)
+    class MySchema:
+
+    #2 (args) -> (cls) -> cls
+
     obj = MySchema()
     assert isinstance(obj, DictAccess)
     print(obj['forty_two'])  # Outputs: 42
     ```
     """
 
-    def __getitem__(self, key: str) -> Any:
-        # for dict access we _only_ want to allow the aliases,
-        # not the attribute names!
-        aliases = {
-            f.metadata["alias"]: f.name for f in fields(self) if "alias" in f.metadata
-        }
-        if key in aliases.keys():
-            return getattr(self, aliases[key])
-        elif key in aliases.values():
-            _suggestion = next((k for k, v in aliases.items() if v == key), None)
-            raise KeyError(
-                "If an alias is defined, subscripting is only allowed "
-                + f"using the alias. Use ['{_suggestion}'] instead of ['{key}']!"
-            )
+    def _decorate(cls: type[T]) -> type[T]:
+        @functools.wraps(cls)
+        def wrap(target_cls: type[T]) -> type[T]:
+            if getter:
+                setattr(target_cls, "__getitem__", _get_item_resolve_alias)
+            if setter:
+                setattr(target_cls, "__setitem__", _set_item_resolve_alias)
+            return target_cls
 
-        return getattr(self, key)
+        return wrap(cls)
 
-    setattr(cls, "__getitem__", __getitem__)
-    return cls
+    if cls is None:
+        return _decorate
+    else:
+        return _decorate(cls)
 
 
 def check_dict_access(schema: D | type[D]) -> bool:
@@ -83,18 +135,9 @@ def allow_additional(cls: type[T]) -> type[T]:
     This prevent validation errors if a dataclass instance holds an attribute
     that is not defined in the dataclass schema.
 
-    Usage:
-
-    ```python
-    @allow_additional
-    @dataclass
-    class MySchema:
-        forty_two: int = 42
-
-    obj = MySchema()
-    obj.extra_attr = "I am extra"
-    validate(obj, MySchema)  # Does not raise
-    ```
+    Note this will not automatically load additional (none-schema) fields from the yaml.
+    To also load additional fields use `EyConfExtraFields` as base class for your
+    configuration dataclass.
     """
     mangled = f"_{cls.__name__}__allow_additional"
     setattr(cls, mangled, True)

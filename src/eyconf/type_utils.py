@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import inspect
 import logging
 import sys
@@ -21,11 +23,9 @@ from typing import Sequence as TypingSequence  # noqa: UP035
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
 
+D = TypeVar("D", bound="DataclassInstance")
 
 log = logging.getLogger(__name__)
-
-
-D = TypeVar("D", bound="DataclassInstance")
 
 
 def get_type_hints_resolve_namespace(obj, include_extras: bool = False):

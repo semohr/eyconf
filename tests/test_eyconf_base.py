@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar
 
 import pytest
-from eyconf import EYConfBase
+from eyconf import Config
 
 from eyconf.config.extra_fields import AttributeDict
 from eyconf.decorators import allow_additional
@@ -37,29 +37,29 @@ class ConfigNested:
 
 
 @pytest.fixture
-def conf42() -> EYConfBase[Config42]:
-    return EYConfBase(Config42(), schema=Config42)
+def conf42() -> Config[Config42]:
+    return Config(Config42(), schema=Config42)
 
 
 @pytest.fixture
-def conf_nested() -> EYConfBase[ConfigNested]:
-    return EYConfBase(ConfigNested(), schema=ConfigNested)
+def conf_nested() -> Config[ConfigNested]:
+    return Config(ConfigNested(), schema=ConfigNested)
 
 
 @pytest.fixture
-def conf42_add() -> EYConfBase[Config42AllowAdditional]:
-    return EYConfBase(Config42AllowAdditional(), schema=Config42AllowAdditional)
+def conf42_add() -> Config[Config42AllowAdditional]:
+    return Config(Config42AllowAdditional(), schema=Config42AllowAdditional)
 
 
 class TestCreation:
     def test_init(self):
-        conf = EYConfBase(Config42(), schema=Config42)
+        conf = Config(Config42(), schema=Config42)
         assert conf.data.int_field == 42
         assert conf.data.str_field == "FortyTwo!"
         assert isinstance(conf.data, Config42)
 
     def test_init_dict(self):
-        conf_dict = EYConfBase(
+        conf_dict = Config(
             {"int_field": 100, "str_field": "Dict value!"},
             schema=Config42,
         )
@@ -68,7 +68,7 @@ class TestCreation:
         assert isinstance(conf_dict.data, Config42)
 
     def test_init_dict_with_required(self):
-        conf_dict = EYConfBase(
+        conf_dict = Config(
             {"int_field": 100, "str_field": "Dict value!"},
             schema=Config42Required,
         )
@@ -77,39 +77,44 @@ class TestCreation:
         assert isinstance(conf_dict.data, Config42Required)
 
     def test_init_dict_no_schema(self):
-        conf = EYConfBase(Config42())
+        conf = Config(Config42())
         assert conf.data.int_field == 42
         assert conf.data.str_field == "FortyTwo!"
         assert isinstance(conf.data, Config42)
 
         with pytest.raises(ValueError):
-            EYConfBase(
+            Config(
                 {"int_field": "not_an_int", "str_field": "Dict value!"},
             )
 
     def test_init_with_invalid_data(self):
         with pytest.raises(MultiConfigurationError):
-            EYConfBase({"int_field": "not_an_int"}, schema=Config42)
+            Config({"int_field": "not_an_int"}, schema=Config42)
 
     def test_init_with_missing_required_fields(self):
         with pytest.raises(MultiConfigurationError):
-            EYConfBase({"str_field": "test"}, schema=Config42)
+            Config({"str_field": "test"}, schema=Config42)
 
-    def test_init_with_extra_fields(self):
+    def test_init_with_allow_additional(self):
+        """Test that additional fields are handled correctly based on schema.
+        Allow to validate additional fields when schema allows them.
+        """
         data = {"int_field": 42, "str_field": "test", "extra_field": "unexpected"}
         with pytest.raises(MultiConfigurationError):
-            EYConfBase(
+            Config(
                 data,
                 schema=Config42,
             )
 
-        conf = EYConfBase(
+        conf = Config(
             data,
             schema=Config42AllowAdditional,
         )
         assert conf.data.int_field == 42
         assert conf.data.str_field == "test"
-        assert conf.data.extra_field == "unexpected"  # type: ignore
+        breakpoint()
+        with pytest.raises(AttributeError):
+            conf.data.extra_field  # type: ignore
 
 
 class TestUpdate:
@@ -117,19 +122,19 @@ class TestUpdate:
     validating only the provided fields, and leaving others unchanged.
     """
 
-    def test_simple(self, conf42: EYConfBase[Config42]):
+    def test_simple(self, conf42: Config[Config42]):
         conf42.update({"int_field": 100, "str_field": "Updated value!"})
 
         assert conf42.data.int_field == 100
         assert conf42.data.str_field == "Updated value!"
 
-    def test_partial(self, conf42: EYConfBase[Config42]):
+    def test_partial(self, conf42: Config[Config42]):
         conf42.update({"int_field": 100})
 
         assert conf42.data.int_field == 100
         assert conf42.data.str_field == "FortyTwo!"
 
-    def test_nested(self, conf_nested: EYConfBase[ConfigNested]):
+    def test_nested(self, conf_nested: Config[ConfigNested]):
         conf_nested.update(
             {
                 "nested": {"int_field": 100, "str_field": "Updated nested value!"},
@@ -144,7 +149,7 @@ class TestUpdate:
         assert conf_nested.data.nested_optional.str_field == "Optional nested!"  # type: ignore[union-attr]
         assert conf_nested.data.other_field == "Updated parent value!"
 
-    def test_nested_partial(self, conf_nested: EYConfBase[ConfigNested]):
+    def test_nested_partial(self, conf_nested: Config[ConfigNested]):
         conf_nested.update(
             {
                 "nested": {"int_field": 100},
@@ -156,44 +161,21 @@ class TestUpdate:
         assert conf_nested.data.other_field == "Hello, World!"
         assert conf_nested.data.nested_optional is None
 
-    def test_invalid(self, conf42: EYConfBase[Config42]):
+    def test_invalid(self, conf42: Config[Config42]):
         with pytest.raises(MultiConfigurationError):
             conf42.update({"int_field": "not an int"})
 
         assert conf42.data.int_field == 42
 
-    def test_additional_fields(self, conf42_add: EYConfBase[Config42AllowAdditional]):
-        conf42_add.update({"int_field": 100, "new_field": "I am new!"})
-
-        assert conf42_add.data.int_field == 100
-        assert conf42_add.data.new_field == "I am new!"  # type: ignore[attr-defined]
-
-    def test_additional_fields_nested(
-        self, conf42_add: EYConfBase[Config42AllowAdditional]
-    ):
-        conf42_add.update(
-            {
-                "nested": {"new_nested_field": {"foo": "bar"}},
-            }
-        )
-
-        assert conf42_add.data.nested.new_nested_field.foo == "bar"  # type: ignore[attr-defined]
-        assert isinstance(conf42_add.data.nested.new_nested_field, AttributeDict)  # type: ignore[attr-defined]
-
-    def test_additional_fields_nested_deep(
-        self, conf42_add: EYConfBase[Config42AllowAdditional]
-    ):
-        # Even more nesting
-        conf42_add.update(
-            {
-                "nested": {"d1": {"d2": {"d3": {"d4_field": "deep value!"}}}},
-            }
-        )
-        assert conf42_add.data.nested.d1.d2.d3.d4_field == "deep value!"  # type: ignore[attr-defined]
+    def test_additional_fields(self, conf42_add: Config[Config42AllowAdditional]):
+        # validation should pass, but _setting_ values not.
+        # for that, we have ConfigExtra.
+        with pytest.raises(AttributeError):
+            conf42_add.update({"int_field": 100, "new_field": "I am new!"})
 
 
 class TestOverwrite:
-    def test_simple(self, conf42: EYConfBase[Config42]):
+    def test_simple(self, conf42: Config[Config42]):
         conf42.overwrite(
             {
                 "int_field": 100,
@@ -210,14 +192,14 @@ class TestOverwrite:
         assert conf42.data.int_field == 200
         assert conf42.data.str_field == "Another overwrite!"
 
-    def test_invalid(self, conf42: EYConfBase[Config42]):
+    def test_invalid(self, conf42: Config[Config42]):
         with pytest.raises(MultiConfigurationError):
             conf42.overwrite({"int_field": "not an int", "str_field": "Valid str"})
 
         with pytest.raises(MultiConfigurationError):
             conf42.overwrite({"str_field": "Missing int field"})
 
-    def test_nested(self, conf_nested: EYConfBase[ConfigNested]):
+    def test_nested(self, conf_nested: Config[ConfigNested]):
         conf_nested.overwrite(
             {
                 "nested": {"int_field": 100, "str_field": "Overwritten nested!"},
@@ -234,7 +216,7 @@ class TestOverwrite:
 
 
 class TestReset:
-    def test_simple(self, conf42: EYConfBase[Config42]):
+    def test_simple(self, conf42: Config[Config42]):
         conf42.update(
             {
                 "int_field": 100,
@@ -250,7 +232,7 @@ class TestReset:
         assert conf42.data.int_field == 42
         assert conf42.data.str_field == "FortyTwo!"
 
-    def test_nested(self, conf_nested: EYConfBase[ConfigNested]):
+    def test_nested(self, conf_nested: Config[ConfigNested]):
         conf_nested.update(
             {
                 "nested": {"int_field": 100, "str_field": "Updated nested value!"},
@@ -273,7 +255,7 @@ class TestReset:
         assert conf_nested.data.other_field == "Hello, World!"
 
     def test_additional_fields_removed(
-        self, conf42_add: EYConfBase[Config42AllowAdditional]
+        self, conf42_add: Config[Config42AllowAdditional]
     ):
         conf42_add.update(
             {
@@ -293,14 +275,14 @@ class TestReset:
 
 
 class TestConverters:
-    def test_schema_data_as_dict(self, conf42: EYConfBase[Config42]):
+    def test_schema_data_to_dict(self, conf42: Config[Config42]):
         expected = {
             "int_field": 42,
             "str_field": "FortyTwo!",
         }
         assert conf42.to_dict() == expected
 
-    def test_extra_data_as_dict(self, conf42_add: EYConfBase[Config42AllowAdditional]):
+    def test_extra_data_to_dict(self, conf42_add: Config[Config42AllowAdditional]):
         conf42_add.update({"new_field": "I am new!"})
 
         assert conf42_add.to_dict(include_additional=True) == {
@@ -313,7 +295,7 @@ class TestConverters:
             "str_field": "FortyTwo!",
         }
 
-    def test_extra_data_as_dict_nested(self):
+    def test_extra_data_to_dict_nested(self):
         @dataclass
         class NestedAllowAdditional:
             nested: Config42AllowAdditional = field(
@@ -323,7 +305,7 @@ class TestConverters:
             other_field: str = "Hello, World!"
             __allow_additional: ClassVar[bool] = True
 
-        conf_nested = EYConfBase(NestedAllowAdditional(), schema=NestedAllowAdditional)
+        conf_nested = Config(NestedAllowAdditional(), schema=NestedAllowAdditional)
         conf_nested.update(
             {
                 "nested": {"new_nested_field": {"foo": "bar"}},
@@ -350,11 +332,11 @@ class TestConverters:
             "other_field": "Hello, World!",
         }
 
-    def test_to_yaml(self, conf42: EYConfBase[Config42]):
+    def test_to_yaml(self, conf42: Config[Config42]):
         expected_yaml = "int_field: 42\nstr_field: FortyTwo!"
         assert conf42.to_yaml() == expected_yaml
 
-    def test_update_additional_property_list(self, conf42_add: EYConfBase[Config42]):
+    def test_update_additional_property_list(self, conf42_add: Config[Config42]):
         """Test updating additional list properties"""
 
         conf42_add.update({"extra_list": [1, 2, 3]})
@@ -362,7 +344,7 @@ class TestConverters:
 
         assert conf42_add.data.extra_list == ["a", "b", "c"]  # type: ignore[attr-defined]
 
-    def test_error_without_additional_properties(self, conf42: EYConfBase[Config42]):
+    def test_error_without_additional_properties(self, conf42: Config[Config42]):
         """Test that updating additional properties without allowing them raises an error"""
         with pytest.raises(AttributeError):
             conf42.update({"extra_field": "not allowed"})
@@ -387,7 +369,7 @@ class TestPrintingUtils:
         for expected_line in expected_lines:
             assert expected_line in str_output
 
-    def test_repr_includes_object_info_and_data(self, conf42: EYConfBase[Config42]):
+    def test_repr_includes_object_info_and_data(self, conf42: Config[Config42]):
         """Test that __repr__ includes basic object info and formatted data"""
         repr_str = repr(conf42)
 
@@ -405,7 +387,7 @@ class TestPrintingUtils:
         ],
     )
     def test_pretty_format_basic_cases(
-        self, test_data, expected, conf42: EYConfBase[Config42]
+        self, test_data, expected, conf42: Config[Config42]
     ):
         """Test _pretty_format with basic cases"""
         formatted = conf42._pretty_format(test_data)

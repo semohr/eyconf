@@ -18,8 +18,6 @@ from typing import (
     cast,
 )
 
-from eyconf.config.extra_fields import AttributeDict
-from eyconf.decorators import check_allows_additional
 from eyconf.generate_yaml import dataclass_to_yaml
 from eyconf.type_utils import get_type_hints_resolve_namespace, is_dataclass_type
 from eyconf.utils import (
@@ -36,10 +34,14 @@ D = TypeVar("D", bound="DataclassInstance")
 log = logging.getLogger(__name__)
 
 
-class EYConfBase(Generic[D]):
-    """Base class for EYconf.
+class Config(Generic[D]):
+    """Base configuration class.
 
-    Can be used to create custom configuration classes in memory without file I/O.
+    This class allows to create configuration objects based on dataclass schemas.
+    It provides methods for validation, updating, overwriting, and converting
+    configuration data.
+
+    This can be used to create custom configuration classes in memory without file I/O.
     """
 
     _schema: type[D]
@@ -137,7 +139,7 @@ class EYConfBase(Generic[D]):
                         # Primitives and direct assignments
                         setattr(target, key, value)
                 else:
-                    # Non-schema fields (EYConfAdditional)
+                    # Non-schema fields
                     self._update_additional(
                         target, key, value, _current_path=_current_path
                     )
@@ -153,16 +155,17 @@ class EYConfBase(Generic[D]):
             self._data = old_data
             raise e from e
 
-    def _update_additional(self, target, key, value: Any, _current_path: list[str]):
-        if not check_allows_additional(target):
-            raise AttributeError(
-                "Cannot set unknown attribute"
-                f" '{'.'.join(_current_path + [key])}' on configuration."
-            )
-        if isinstance(value, dict):
-            setattr(target, key, AttributeDict(**value))
-        else:
-            setattr(target, key, value)
+    def _update_additional(
+        self, target, key, value: Any, _current_path: list[str]
+    ) -> None:
+        """Handle updating additional (non-schema) fields.
+
+        Can be overwritten in subclasses.
+        """
+        raise AttributeError(
+            "Cannot set unknown attribute"
+            f" '{'.'.join(_current_path + [key])}' on configuration."
+        )
 
     def overwrite(self, data: dict | D):
         """Overwrite the configuration with provided data.
@@ -183,14 +186,6 @@ class EYConfBase(Generic[D]):
     def data(self) -> D:
         """Get the configuration data."""
         return self._data
-
-    def default_yaml(self) -> str:
-        """Return the configs' defaults (inferred from schema) as yaml.
-
-        You may overwrite this method to customize the default configuration
-        generation.
-        """
-        return dataclass_to_yaml(self._schema)
 
     def to_dict(self, include_additional: bool = False) -> dict:
         """Convert the configuration data to a dictionary.

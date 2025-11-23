@@ -49,7 +49,7 @@ class TestAttributeDict:
 
         assert attr_dict.nested.level == 42
 
-    def test_as_dict(self):
+    def test_to_dict(self):
         attr_dict = AttributeDict()
         attr_dict.foo = "bar"  # type: ignore
         attr_dict.nested.level = 42  # type: ignore
@@ -61,7 +61,7 @@ class TestAttributeDict:
             },
         }
 
-        assert attr_dict.as_dict() == expected
+        assert attr_dict.to_dict() == expected
 
     def test_bool_conversion(self):
         attr_dict = AttributeDict()

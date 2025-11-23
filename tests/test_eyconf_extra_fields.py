@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import pytest
-from eyconf.config import EYConfExtraFields
+from eyconf.config import ConfigExtra
 from eyconf.config.extra_fields import AccessProxy
 
 
@@ -12,13 +12,13 @@ class Config42:
 
 class TestEYConfExtraFields:
     def test_init(self):
-        config = EYConfExtraFields(Config42())
+        config = ConfigExtra(Config42())
 
         assert isinstance(config.data, AccessProxy)
         assert config.data.int_field == 42
 
     def test_set_data(self):
-        config = EYConfExtraFields(Config42())
+        config = ConfigExtra(Config42())
 
         config.data.int_field = 100
         config.data.new_field = "Hundred"  # type: ignore
@@ -38,7 +38,7 @@ class TestEYConfExtraFields:
         }
 
     def test_set_mixed(self):
-        config = EYConfExtraFields(Config42())
+        config = ConfigExtra(Config42())
 
         config.data.new_field = "New Value"  # type: ignore
         config.data.nested.foo = "Bar"  # type: ignore
@@ -66,7 +66,7 @@ class TestEYConfExtraFields:
         }
 
     def test_update_unknown_field(self):
-        config = EYConfExtraFields(Config42())
+        config = ConfigExtra(Config42())
 
         config.update({"unknown_field": "I am unknown!"})
 
@@ -82,7 +82,7 @@ class TestEYConfExtraFields:
                 default_factory=lambda: {"placeholder": Config42()}
             )
 
-        config = EYConfExtraFields(SchemaDict())
+        config = ConfigExtra(SchemaDict())
 
         assert config.data.folders["placeholder"].int_field == 42
         for folder in config.data.folders.values():
@@ -117,7 +117,7 @@ class TestEYConfExtraFields:
         class SchemaWithNested:
             nested: NestedSchema = field(default_factory=NestedSchema)
 
-        config = EYConfExtraFields(SchemaWithNested())
+        config = ConfigExtra(SchemaWithNested())
 
         assert config.data.nested.folders["placeholder"].int_field == 42
         for folder in config.data.nested.folders.values():
@@ -140,7 +140,7 @@ class TestEYConfExtraFields:
         assert config.data.nested.folders["config2"].str_field == "Two"
 
     def test_update_unknown_nested(self):
-        config = EYConfExtraFields(Config42())
+        config = ConfigExtra(Config42())
 
         config.update({"level_one": {"level_two": {"level_three": "Deep Value"}}})
         assert config.data.level_one.level_two.level_three == "Deep Value"  # type: ignore[attr-defined]

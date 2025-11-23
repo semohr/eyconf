@@ -1,9 +1,9 @@
-from .base import EYConfBase
-from .extra_fields import EYConfExtraFields
+from .base import Config
+from .extra_fields import ConfigExtra
 from .file import EYConf
 
 __all__ = [
     "EYConf",
-    "EYConfBase",
-    "EYConfExtraFields",
+    "Config",
+    "ConfigExtra",
 ]

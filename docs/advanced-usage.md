@@ -2,7 +2,6 @@
 
 EYConf provides several advanced features to customize its behavior and integrate seamlessly into your projects.
 
-
 ## Change Configuration File Path
 
 To change the path of the configuration file, you can set the `EYCONF_CONFIG_FILE` environment variable to the desired path before creating the {py:class}`~eyconf.config.EYConf` instance:
@@ -23,7 +22,6 @@ config = CustomConfig(ConfigSchema)
 ```
 
 {ref}`Why can I not just provide a path to the constructor? <faq:why-can-i-not-just-provide-a-path-to-the-constructor>`
-
 
 ## Without YAML File / Memory Only Validation
 
@@ -98,7 +96,6 @@ print(config.data["fortytwo"])  # Outputs: 42
 If you are using nested dataclasses in your configuration schema, make sure to apply the `@dict_access` decorator to all nested dataclasses as well. Otherwise, dict style access will not work for the nested dataclasses.
 :::
 
-
 ## Typer integration
 
 The `eyconf.cli` module provides a convenient way to create a command-line interface (CLI) for managing configuration files using the [typer library](https://typer.tiangolo.com/). This can be particularly useful when you want to provide users with the ability to interact and modify configuration files via the terminal.
@@ -125,7 +122,6 @@ sub_app = create_config_cli(EYConf, schema)
 app.add_typer(sub_app, name="config")
 ```
 
-
 ### The CLI Commands
 
 The CLI provides several commands to manage your configuration:
@@ -142,7 +138,6 @@ width: 80
 
 </div>
 
-
 <div class="only-dark">
 
 ```{typer} example:app.config
@@ -154,7 +149,6 @@ width: 80
 ```
 
 </div>
-
 
 ## Annotated Docstrings
 
@@ -190,37 +184,53 @@ use_ssl: false
 
 Sometimes you might want to validate only part of a schema, e.g. when building on existing yaml or a third-party tool.
 
-For that, we provide the `@allow_additional` decorator, which can be used to mark dataclasses as allowing additional fields not defined in the schema.
+For that, we provide the `@allow_additional` decorator, which can be used to mark dataclasses as allowing additional fields not defined in the schema. This is only applicable during validation.
 
 ```python
 from dataclasses import dataclass
 from eyconf.decorators import allow_additional
-from eyconf.validation import validate
 
 @allow_additional
 @dataclass
 class Config:
     known_field: int = 42
 
-config = Config()
-config.extra_field = "I am extra"
-validate(config, Config)  # Does not raise
+config = EyConf(schema=Config)
 ```
 
-Alternatively, you can use the `EYConfExtraFields` class if you want to allow additional fields globally for your configuration. This also enables dict-style access.
+We can now edit the config yaml file to include additional fields:
+
+```yaml
+# config.yaml
+known_field: 42
+extra_field: "this is new"
+```
+
+and wont receive a validation error:
+
+```python
+config.reload()  # Load file and validate, will not raise
+```
+
+:::{warning}
+Using the `@allow_additional` decorator does not make the additional fields accessible!
+If you want to access them, use the `ConfigExtra` class instead.
+:::
+
+If you want to allow additional fields, access and set them, you can use the `ConfigExtra` class:
 
 ```python
 from dataclasses import dataclass
-from eyconf.config import EYConfExtraFields
+from eyconf.config import ConfigExtra
 
 @dataclass
 class Config:
     known_field: int = 42
 
-config = EYConfExtraFields(Config())
-config.data.extra_field = 43
+config = ConfigExtra(Config())
+config.data.extra_field = 43 
+config.data["extra_field_2"] = 44 # also enables dict style access
 
-print(config.data["extra_field"]) # 43
-print(config.data.extra_field)    # 43
-print(config.extra_data)          # {'extra_field': 43}
+print(config.schema_data) # {'known_field': 42}
+print(config.extra_data)  # {'extra_field': 43, 'extra_field_2': 44}
 ```

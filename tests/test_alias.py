@@ -4,9 +4,9 @@ from dataclasses import asdict, dataclass, field
 
 from typing import Any, TypeVar
 import pytest
-from eyconf import EYConfBase
+from eyconf import Config
 from eyconf.asdict import asdict_with_aliases
-from eyconf.config.extra_fields import EYConfExtraFields
+from eyconf.config.extra_fields import ConfigExtra
 from eyconf.config.extra_fields import AttributeDict
 from eyconf.decorators import allow_additional, dict_access, DictAccess
 from eyconf.validation import (
@@ -32,13 +32,13 @@ class ConfigNested:
 
 
 @pytest.fixture
-def conf42() -> EYConfBase[Config42]:
-    return EYConfBase(Config42(), schema=Config42)
+def conf42() -> Config[Config42]:
+    return Config(Config42(), schema=Config42)
 
 
 @pytest.fixture
-def conf_nested() -> EYConfBase[ConfigNested]:
-    return EYConfBase(ConfigNested(), schema=ConfigNested)
+def conf_nested() -> Config[ConfigNested]:
+    return Config(ConfigNested(), schema=ConfigNested)
 
 
 @dataclass
@@ -103,7 +103,7 @@ class TestAlias:
         validate(config, schema=AliasConfigAdditional)
 
     def test_dict_alias_update(self):
-        config = EYConfBase(AliasConfig(attr_field=42))
+        config = Config(AliasConfig(attr_field=42))
 
         # Update via alias
         # update also calls validate in the background
@@ -113,9 +113,7 @@ class TestAlias:
 
     def test_constructor_alias(self):
         # Constructor with dict using alias
-        config = EYConfBase(
-            {"dict_field": 100, "str_field": "Test"}, schema=AliasConfig
-        )
+        config = Config({"dict_field": 100, "str_field": "Test"}, schema=AliasConfig)
 
         assert config.data.attr_field == 100
         assert config.data.str_field == "Test"
@@ -123,7 +121,7 @@ class TestAlias:
 
 class TestAliasWithDictAccess:
     def test_dict_alias_access(self):
-        config = EYConfBase(AliasDictConfig(attr_field=42))
+        config = Config(AliasDictConfig(attr_field=42))
 
         # We want this asymetric access behavior
         assert config.data.attr_field == 42
@@ -138,7 +136,7 @@ class TestAliasWithDictAccess:
             config.data["attr_field"]
 
     def test_extra_fields_dict_alias_access(self):
-        config = EYConfExtraFields(AliasDictConfig(attr_field=42))
+        config = ConfigExtra(AliasDictConfig(attr_field=42))
 
         assert config.data.attr_field == 42
 
