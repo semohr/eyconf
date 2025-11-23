@@ -6,7 +6,6 @@ with validation and serialization capabilities.
 
 from __future__ import annotations
 
-import json
 import logging
 from copy import deepcopy
 from dataclasses import asdict, fields, is_dataclass
