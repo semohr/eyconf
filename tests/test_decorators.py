@@ -7,7 +7,6 @@ from eyconf.decorators import (
     check_allows_additional,
     dict_access,
     DictAccess,
-    check_dict_access,
 )
 
 
@@ -55,22 +54,6 @@ class TestAllowsAdditional:
 
 
 class TestDictAccess:
-    def test_dict_access_basic(self):
-        config1 = SchemaWithDictAcecess()
-        config2 = SchemaWithBoth()
-        assert check_dict_access(SchemaWithDictAcecess)
-        assert check_dict_access(config1)
-        assert isinstance(config1, DictAccess)
-
-        assert check_dict_access(SchemaWithBoth)
-        assert check_dict_access(config2)
-        assert isinstance(config2, DictAccess)
-
-    def test_no_dict_access(self):
-        config = SchemaUndercorated()
-        assert not check_dict_access(SchemaUndercorated)
-        assert not check_dict_access(config)
-
     def test_item_assignment(self):
         """Test basic dict-style get access."""
         obj = SchemaWithDictAcecess()

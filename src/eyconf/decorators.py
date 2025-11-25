@@ -127,15 +127,6 @@ def dict_access(
         return _decorate(cls)
 
 
-def check_dict_access(schema: D | type[D]) -> bool:
-    """Whether the dataclass allows access via dict-like syntax."""
-    if is_dataclass_type(schema):
-        return issubclass(schema, DictAccess)
-    elif is_dataclass(schema) and not isinstance(schema, type):
-        return isinstance(schema, DictAccess)
-    return False
-
-
 def allow_additional(cls: type[T]) -> type[T]:
     """Class decorator to allow additional attributes in dataclass.
 
