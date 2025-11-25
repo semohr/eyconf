@@ -73,10 +73,10 @@ jobs:
         env:
           PYTEST_ADDOPTS: "--color=yes"
         run: |
-          pytest --cov=eyconf --cov-branch --cov-report=xml
+          pytest --cov=eyconf --junitxml=junit.xml -o junit_family=legacy
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.xml
