@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from eyconf.asdict import asdict_with_aliases
 
 # for some reason typing  Sequence and abc sequence are not the same type
-from typing import Sequence as TypingSequence
+from typing import Sequence as TypingSequence  # noqa: UP035
 
 from eyconf.utils import merge_dicts  # noqa: UP035
 
@@ -252,7 +252,7 @@ class TestMergeDicts:
 
     def test_merge_empty_dicts(self):
         """Test merging with empty dictionaries."""
-        a = {}
+        a: dict = {}
         b = {"key": "value"}
         result = merge_dicts(a, b)
         assert result == {"key": "value"}
