@@ -1,14 +1,17 @@
 from collections.abc import Sequence
-from collections.abc import Sequence as ABCSequence
-from dataclasses import is_dataclass
+from dataclasses import fields, is_dataclass
 from functools import cache
 from types import NoneType, UnionType
-from typing import Annotated, Any, Literal, Union, get_args, get_origin
+from typing import Annotated, Any, ClassVar, Literal, get_args, get_origin
+
+# for some reason typing  Sequence and abc sequence are not the same type
+from typing import Sequence as TypingSequence  # noqa: UP035
 
 from jsonschema import Draft202012Validator
 from typing_extensions import NotRequired
 
 from eyconf.constants import primitive_type_mapping
+from eyconf.decorators import check_allows_additional
 from eyconf.type_utils import get_type_hints_resolve_namespace
 
 SchemaType = dict[str, Any] | dict[str, str] | dict[Any, Any]
@@ -21,7 +24,7 @@ __all__ = ["to_json_schema"]
 def to_json_schema(
     type: type,
     check_schema: bool = True,
-    allow_additional: bool = True,
+    allow_additional: bool | None = None,
 ) -> dict:
     """Convert a TypedDict or dataclass to a JSON schema.
 
@@ -31,8 +34,10 @@ def to_json_schema(
         The TypedDict or dataclass to convert.
     check_schema : bool
         Whether to check the schema for validity.
-    allow_additional : bool
+    allow_additional : bool or None
         Whether to allow extra, unrecognized properties in the schema.
+        If None (default), uses the `__allow_additional` attribute
+        of the TypedDict or dataclass if present, otherwise False.
 
     Raises
     ------
@@ -45,14 +50,27 @@ def to_json_schema(
         "type": "object",
         "properties": {},
         "required": [],
-        "additionalProperties": allow_additional,
+        "additionalProperties": check_allows_additional(type)
+        if allow_additional is None
+        else allow_additional,
     }
 
     # Get type hints for the TypedDict
     type_hints = get_type_hints_resolve_namespace(type, include_extras=True)
+    dataclass_fields = fields(type) if is_dataclass(type) else {}
+    alias_fields = {f.name: f for f in dataclass_fields if "alias" in f.metadata}
 
     # Add the type hints to the schema
     for field_name, field_type in type_hints.items():
+        # Resolve alias
+        if alias_field := alias_fields.get(field_name):
+            field_name = alias_field.metadata["alias"]
+
+        origin = get_origin(field_type)
+        if origin is ClassVar:
+            # ignore dunder like our __allow_additional
+            continue
+
         p, r = __convert_type_to_schema(field_type, allow_additional=allow_additional)
         schema["properties"][field_name] = p
 
@@ -112,7 +130,7 @@ def __convert_type_to_schema(
         return __convert_type_to_schema(field_type, **kwargs)[0], is_required
 
     # Handler union
-    if origin is Union or origin is UnionType:
+    if origin is UnionType:
         allowed_types = set(get_args(field_type))
         if NoneType in allowed_types:
             is_required = False
@@ -133,7 +151,7 @@ def __convert_type_to_schema(
             return t, is_required
 
     # Handle sequence types
-    if origin in [list, set, tuple, Sequence, ABCSequence]:
+    if origin in [list, set, tuple, Sequence, TypingSequence]:
         return {
             "type": "array",
             "items": __convert_type_to_schema(get_args(field_type)[0], **kwargs)[0],
@@ -148,7 +166,7 @@ def __convert_type_to_schema(
         pass
 
     # Handle Dicts - arbitrary keys with typed values
-    if origin in [dict, dict]:
+    if origin is dict:
         key_type, value_type = get_args(field_type)
         if key_type is not str:
             raise ValueError("Only string keys are supported in dict types")

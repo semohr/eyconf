@@ -6,10 +6,9 @@ with validation and serialization capabilities.
 
 from __future__ import annotations
 
-import json
 import logging
 from copy import deepcopy
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, fields, is_dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -19,12 +18,11 @@ from typing import (
 )
 
 from eyconf.generate_yaml import dataclass_to_yaml
-from eyconf.type_utils import get_type_hints_resolve_namespace
+from eyconf.type_utils import get_type_hints_resolve_namespace, is_dataclass_type
 from eyconf.utils import (
-    AttributeDict,
     dataclass_from_dict,
 )
-from eyconf.validation import to_json_schema, validate_json
+from eyconf.validation import to_json_schema, validate, validate_json
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -35,23 +33,28 @@ D = TypeVar("D", bound="DataclassInstance")
 log = logging.getLogger(__name__)
 
 
-class EYConfBase(Generic[D]):
-    """Base class for EYconf.
+class Config(Generic[D]):
+    """Base configuration class.
 
-    Can be used to create custom configuration classes in memory without file I/O.
+    This class allows to create configuration objects based on dataclass schemas.
+    It provides methods for validation, updating, overwriting, and converting
+    configuration data.
+
+    This can be used to create custom configuration classes in memory without file I/O.
     """
 
     _schema: type[D]
     _data: D
     _json_schema: dict
-    allow_additional_properties: bool
 
     def __init__(
         self,
         data: dict | D,
         schema: type[D] | None = None,
-        allow_additional_properties: bool = False,
     ):
+        if is_dataclass_type(data):
+            raise ValueError("Data must be a dict or datacalss instance, not schema!")
+
         if schema is not None:
             self._schema = schema
         else:
@@ -62,23 +65,19 @@ class EYConfBase(Generic[D]):
             self._schema = type(data)
 
         # Create schema, raise if Schema is invalid
-        self.allow_additional_properties = allow_additional_properties
-        self._json_schema = to_json_schema(
-            self._schema,
-            allow_additional=allow_additional_properties,
-        )
+        self._json_schema = to_json_schema(self._schema)
 
         # Will raise ConfigurationError if the data does not comply with the schema
-        validate_json(data, self._json_schema)
+        validate(data, self._json_schema)
+
         if is_dataclass(data):
             self._data = cast(D, data)
         else:
-            self._data = self._schema()  # type: ignore[bad-assignment]
-            self.update(data)
+            self._data = dataclass_from_dict(self._schema, data)
 
     def validate(self):
         """Validate the current data against the schema."""
-        validate_json(self._data, self._json_schema)
+        validate(self._data, self._json_schema)
 
     def update(self, data: dict):
         """Update the configuration with provided data.
@@ -94,7 +93,19 @@ class EYConfBase(Generic[D]):
             _current_path: list[str] = [],
         ):
             target_annotations = get_type_hints_resolve_namespace(target_type)
+
+            # Rewrite key, from alias to field name
+            alias_fields = {
+                f.metadata["alias"]: f
+                for f in fields(target_type)
+                if "alias" in f.metadata
+            }
+
             for key, value in update_data.items():
+                # resolve if key has an alias
+                if alias_field := alias_fields.get(key):
+                    key = alias_field.name
+
                 if hasattr(target, key):
                     # folders : dict[str, InboxFolder]
                     current_value = getattr(target, key)
@@ -125,9 +136,11 @@ class EYConfBase(Generic[D]):
                         setattr(target, key, nested)
                     else:
                         # Primitives and direct assignments
+                        # Can only be reached if a dynamic field is added
+                        # to the dataclass instance
                         setattr(target, key, value)
                 else:
-                    # Non-schema fields (EYConfAdditional)
+                    # Non-schema fields
                     self._update_additional(
                         target, key, value, _current_path=_current_path
                     )
@@ -143,16 +156,17 @@ class EYConfBase(Generic[D]):
             self._data = old_data
             raise e from e
 
-    def _update_additional(self, target, key, value: Any, _current_path: list[str]):
-        if not self.allow_additional_properties:
-            raise AttributeError(
-                "Cannot set unknown attribute"
-                f" '{'.'.join(_current_path + [key])}' on configuration."
-            )
-        if isinstance(value, dict):
-            setattr(target, key, AttributeDict(**value))
-        else:
-            setattr(target, key, value)
+    def _update_additional(
+        self, target, key, value: Any, _current_path: list[str]
+    ) -> None:
+        """Handle updating additional (non-schema) fields.
+
+        Can be overwritten in subclasses.
+        """
+        raise AttributeError(
+            "Cannot set unknown attribute"
+            f" '{'.'.join(_current_path + [key])}' on configuration."
+        )
 
     def overwrite(self, data: dict | D):
         """Overwrite the configuration with provided data.
@@ -174,25 +188,8 @@ class EYConfBase(Generic[D]):
         """Get the configuration data."""
         return self._data
 
-    def default_yaml(self) -> str:
-        """Return the configs' defaults (inferred from schema) as yaml.
-
-        You may overwrite this method to customize the default configuration
-        generation.
-        """
-        return dataclass_to_yaml(self._schema)
-
-    def to_dict(self, include_additional: bool = False) -> dict:
-        """Convert the configuration data to a dictionary.
-
-        Parameters
-        ----------
-        include_additional : bool
-            Whether to include extra data not part of the schema.
-        """
-        if include_additional:
-            # A bit hacky but works for now
-            return json.loads(json.dumps(self._data, default=lambda o: o.__dict__))
+    def to_dict(self) -> dict:
+        """Convert the configuration data to a dictionary."""
         return asdict(self._data)
 
     def to_yaml(self) -> str:

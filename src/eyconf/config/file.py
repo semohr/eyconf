@@ -22,7 +22,7 @@ from eyconf.utils import (
 )
 from eyconf.validation import to_json_schema, validate_json
 
-from .base import EYConfBase
+from .base import Config, dataclass_to_yaml
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -33,7 +33,7 @@ D = TypeVar("D", bound="DataclassInstance")
 log = logging.getLogger(__name__)
 
 
-class EYConf(EYConfBase[D]):
+class EYConf(Config[D]):
     """Configuration class.
 
     This class is used to generate a default configuration file from a schema
@@ -79,7 +79,15 @@ class EYConf(EYConfBase[D]):
         )
 
     def reset(self):
-        """Reset the configuration by reloading and validating the file."""
+        """Reset the configuration file to the default values.
+
+        This will overwrite the existing configuration file!
+        """
+        self._write_default()
+        self._data = self._load_and_validate()
+
+    def reload(self):
+        """Reload the configuration by reloading and validating the file."""
         self._data = self._load_and_validate()
 
     def __repr__(self) -> str:
@@ -91,6 +99,14 @@ class EYConf(EYConfBase[D]):
         return f"{prefix}{self.__str__()}"
 
     # ------------------ Helpers for file generation and loading ----------------- #
+
+    def default_yaml(self) -> str:
+        """Return the configs' defaults (inferred from schema) as yaml.
+
+        You may overwrite this method to customize the default configuration
+        generation.
+        """
+        return dataclass_to_yaml(self._schema)
 
     def _write_default(self):
         """Generate default yaml configuration."""

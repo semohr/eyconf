@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0]
+
+* Added proper support for adding additional properties to configuration schemas via the `ConfigExtra` class. This allows users to include extra fields in their configuration that are not explicitly defined in the dataclass schema. All partial support for 
+allow additional in the base config has been removed in favor of this new approach. This 
+unifies the way extra fields are handled across the library.
+* Added `allow_additional` and `dict_access` decorators to simplify enabling extra fields and dict-style access for configuration schemas.
+* Updated documentation to reflect changes in handling extra fields and added examples for using `ConfigExtra`.
+* Renamed `EyConfBase` to `Config` for better clarity and consistency as the base class does not interact with Yaml directly.
+* Renamed `as_dict` methods to `to_dict` for better clarity.
+* Added `reload` method to `EyConf` class to allow reloading configuration from the original YAML file.
+* Added support for `alias` definition using the `field` metadata in schemas, allowing users to define alternative names for configuration fields in the YAML file.
+
 ## [0.3.5]
 
 * Fixed where usage of `Annotated` breaks YAML validation.

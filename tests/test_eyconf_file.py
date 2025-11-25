@@ -61,7 +61,7 @@ class TestEYConfFile:
         assert conf._data.int_field == 20
         assert conf._data.str_field == "Another value!"
 
-    def test_reset(self, tmp_config_path):
+    def test_reload(self, tmp_config_path):
         with open(tmp_config_path, "w") as f:
             f.write("int_field: 10\nstr_field: Temp value!\n")
         conf = EYConf(Config42)
@@ -72,14 +72,25 @@ class TestEYConfFile:
         with open(tmp_config_path, "w") as f:
             f.write("int_field: 99\nstr_field: Changed value!\n")
 
-        conf.reset()
+        conf.reload()
         assert conf._data.int_field == 99
         assert conf._data.str_field == "Changed value!"
 
         # Should raise for missing config
         tmp_config_path.unlink()
         with pytest.raises(FileNotFoundError):
-            conf.reset()
+            conf.reload()
+
+    def test_reset(self, tmp_config_path):
+        with open(tmp_config_path, "w") as f:
+            f.write("int_field: 5\nstr_field: Old value!\n")
+        conf = EYConf(Config42)
+        assert conf._data.int_field == 5
+        assert conf._data.str_field == "Old value!"
+
+        conf.reset()
+        assert conf._data.int_field == 42
+        assert conf._data.str_field == "FortyTwo!"
 
     def test_repr(self, tmp_config_path):
         conf = EYConf(Config42)
