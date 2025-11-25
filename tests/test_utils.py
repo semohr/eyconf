@@ -10,7 +10,9 @@ from dataclasses import dataclass, field
 from eyconf.asdict import asdict_with_aliases
 
 # for some reason typing  Sequence and abc sequence are not the same type
-from typing import Sequence as TypingSequence  # noqa: UP035
+from typing import Sequence as TypingSequence
+
+from eyconf.utils import merge_dicts  # noqa: UP035
 
 
 @dict_access
@@ -212,3 +214,65 @@ class TestIterDataclassType:
         assert Outer in result
         assert Middle in result
         assert Inner in result
+
+
+class TestMergeDicts:
+    def test_merge_simple_dicts(self):
+        """Test merging two simple dictionaries without conflicts."""
+        a = {"x": 1, "y": 2}
+        b = {"z": 3}
+        result = merge_dicts(a, b)
+        expected = {"x": 1, "y": 2, "z": 3}
+        assert result == expected
+
+    def test_merge_nested_dicts(self):
+        """Test merging nested dictionaries without conflicts."""
+        a = {"database": {"host": "localhost", "port": 5432}}
+        b = {"database": {"name": "mydb"}, "cache": {"enabled": True}}
+        result = merge_dicts(a, b)
+        expected = {
+            "database": {"host": "localhost", "port": 5432, "name": "mydb"},
+            "cache": {"enabled": True},
+        }
+        assert result == expected
+
+    def test_merge_with_conflict_raises_exception(self):
+        """Test that conflicting values raise an exception."""
+        a = {"key": "value1"}
+        b = {"key": "value2"}
+        with pytest.raises(Exception, match="Conflict at key"):
+            merge_dicts(a, b)
+
+    def test_merge_nested_conflict_raises_exception(self):
+        """Test that nested conflicting values raise an exception with correct path."""
+        a = {"level1": {"level2": {"key": "old_value"}}}
+        b = {"level1": {"level2": {"key": "new_value"}}}
+        with pytest.raises(Exception, match="Conflict at level1.level2.key"):
+            merge_dicts(a, b)
+
+    def test_merge_empty_dicts(self):
+        """Test merging with empty dictionaries."""
+        a = {}
+        b = {"key": "value"}
+        result = merge_dicts(a, b)
+        assert result == {"key": "value"}
+
+        a = {"key": "value"}
+        b = {}
+        result = merge_dicts(a, b)
+        assert result == {"key": "value"}
+
+    def test_merge_identical_dicts(self):
+        """Test merging dictionaries with identical values."""
+        a = {"key": "same_value"}
+        b = {"key": "same_value"}
+        result = merge_dicts(a, b)
+        assert result == {"key": "same_value"}
+
+    def test_merge_modifies_first_dict_in_place(self):
+        """Test that the first dictionary is modified in place."""
+        a = {"original": "value"}
+        b = {"new": "data"}
+        result = merge_dicts(a, b)
+        assert a is result  # Should be the same object
+        assert "new" in a  # Should have modified the original

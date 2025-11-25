@@ -314,7 +314,6 @@ def __field_to_lines(field: Field[Any], field_type: type, indent=0) -> list[Line
         )
         return lines
 
-    breakpoint()
     raise NotImplementedError(
         f"Field type {field.type} {args} {origin} is not supported."
     )
