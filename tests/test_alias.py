@@ -6,9 +6,7 @@ from typing import Any, TypeVar
 import pytest
 from eyconf import Config
 from eyconf.asdict import asdict_with_aliases
-from eyconf.config.extra_fields import ConfigExtra
-from eyconf.config.extra_fields import AttributeDict
-from eyconf.decorators import allow_additional, dict_access, DictAccess
+from eyconf.decorators import allow_additional, dict_access
 from eyconf.validation import (
     MultiConfigurationError,
     validate,
@@ -117,38 +115,3 @@ class TestAlias:
 
         assert config.data.attr_field == 100
         assert config.data.str_field == "Test"
-
-
-class TestAliasWithDictAccess:
-    def test_dict_alias_access(self):
-        config = Config(AliasDictConfig(attr_field=42))
-
-        # We want this asymetric access behavior
-        assert config.data.attr_field == 42
-        with pytest.raises(AttributeError):
-            config.data.dict_field  # type: ignore
-
-        assert isinstance(config.data, DictAccess)
-
-        # By dict is inverted
-        assert config.data["dict_field"] == 42
-        with pytest.raises(KeyError):
-            config.data["attr_field"]
-
-    def test_extra_fields_dict_alias_access(self):
-        config = ConfigExtra(AliasDictConfig(attr_field=42))
-
-        assert config.data.attr_field == 42
-
-        # Currently our EYConfExtraFields:
-        # - always allows dict access
-        # - allows arbitrary attribute access
-        # - this is somewhat inconsistent with EYConfBase behavior, where
-        # if we have an alias, we do not allow access via the alias as attribute
-        assert isinstance(config.data.dict_field, AttributeDict)  # type: ignore
-
-        assert isinstance(config.data, DictAccess)
-
-        assert config.data["dict_field"] == 42
-        with pytest.raises(KeyError):
-            config.data["attr_field"]

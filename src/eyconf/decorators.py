@@ -28,6 +28,13 @@ class DictAccess(Protocol):
     def __getitem__(self, key: str) -> Any: ...  # noqa: D105
 
 
+@runtime_checkable
+class DictSetAccess(Protocol):
+    """Protocol for dict-like access with setting."""
+
+    def __setitem__(self, key: str, value: Any) -> None: ...  # noqa: D105
+
+
 def _aliases_map(cls: DataclassInstance) -> dict[str, str]:
     """Get mapping of aliases to field names for a dataclass."""
     return {f.metadata["alias"]: f.name for f in fields(cls) if "alias" in f.metadata}

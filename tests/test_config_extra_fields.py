@@ -119,7 +119,8 @@ class TestUpdate:
                     "folders": {
                         "config1": {"int_field": 1, "str_field": "One"},
                         "config2": {"int_field": 2, "str_field": "Two"},
-                    }
+                    },
+                    "unknown_field": "I am unknown!",
                 }
             }
         )
@@ -128,6 +129,7 @@ class TestUpdate:
         assert config.data.nested.folders["config1"].str_field == "One"
         assert config.data.nested.folders["config2"].int_field == 2
         assert config.data.nested.folders["config2"].str_field == "Two"
+        assert config.data.nested.unknown_field == "I am unknown!"
 
     def test_unknown_nested(self):
         config = ConfigExtra(Config42())
