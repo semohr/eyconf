@@ -23,13 +23,22 @@ D = TypeVar("D", bound="DataclassInstance")
 def merge_dicts(a: dict, b: dict, path=[]):
     """Merge dict b into dict a, raising an exception on conflicts."""
     for key in b:
+        val_b = b[key]
         if key in a:
             if isinstance(a[key], dict) and isinstance(b[key], dict):
                 merge_dicts(a[key], b[key], path + [str(key)])
-            elif a[key] != b[key]:
-                raise Exception("Conflict at " + ".".join(path + [str(key)]))
+            val_a = a[key]
+            if isinstance(val_a, dict) and isinstance(val_b, dict):
+                merge_dicts(val_a, val_b, path + [str(key)])
+            elif val_a != val_b:
+                raise Exception(
+                    "Conflict at "
+                    + ".".join(path + [str(key)])
+                    + f": {val_a} != {val_b}"
+                )
         else:
-            a[key] = b[key]
+            a[key] = val_b
+
     return a
 
 

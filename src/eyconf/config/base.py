@@ -102,8 +102,13 @@ class Config(Generic[D]):
 
             for key, value in update_data.items():
                 # resolve if key has an alias
+                orig_key = key
                 if alias_field := alias_fields.get(key):
                     key = alias_field.name
+
+                # TODO: marker
+                # if key in ["import", "import_"]:
+                # breakpoint()
 
                 if hasattr(target, key):
                     # folders : dict[str, InboxFolder]
@@ -141,7 +146,7 @@ class Config(Generic[D]):
                 else:
                     # Non-schema fields
                     self._update_additional(
-                        target, key, value, _current_path=_current_path
+                        target, orig_key, value, _current_path=_current_path
                     )
 
         old_data = deepcopy(self._data)
