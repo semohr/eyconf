@@ -96,6 +96,18 @@ print(config.data["fortytwo"])  # Outputs: 42
 If you are using nested dataclasses in your configuration schema, make sure to apply the `@dict_access` decorator to all nested dataclasses as well. Otherwise, dict style access will not work for the nested dataclasses.
 :::
 
+To work around reserved keywords when using an existing yaml, you can use an alias in your dataclass:
+
+```python
+from dataclasses import dataclass, field
+
+@dataclass
+class ConfigSchema:
+    import_: str = field(metadata={"alias": "import"})
+```
+
+This will use "import" on the yaml side, for validation, and dict-style access, but you can use `import_` for attribute-style access.
+
 ## Typer integration
 
 The `eyconf.cli` module provides a convenient way to create a command-line interface (CLI) for managing configuration files using the [typer library](https://typer.tiangolo.com/). This can be particularly useful when you want to provide users with the ability to interact and modify configuration files via the terminal.
@@ -228,7 +240,7 @@ class Config:
     known_field: int = 42
 
 config = ConfigExtra(Config())
-config.data.extra_field = 43 
+config.data.extra_field = 43
 config.data["extra_field_2"] = 44 # also enables dict style access
 
 print(config.schema_data) # {'known_field': 42}

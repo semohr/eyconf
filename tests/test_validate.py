@@ -469,6 +469,27 @@ class TestToSchema:
         assert schema["additionalProperties"] is False
         assert schema["properties"]["bar"]["additionalProperties"] is True
 
+    def test_literal_in_union(self):
+        """For some reason Literals inside Unions have `Union` as their origin
+        instead of `UnionType`. Might be a Python bug!
+
+        >>> from typing import Literal, get_origin
+        >>> get_origin(int | Literal["asd"])
+        typing.Union
+        >>> get_origin(int | str)
+        <class 'types.UnionType'>
+        """
+
+        @dataclass
+        class Schema:
+            foo: str | Literal["bar", "baz"]
+
+        schema = to_json_schema(Schema)
+        assert sorted(schema["properties"]["foo"]["anyOf"], key=lambda x: str(x)) == [
+            {"type": "string", "enum": ["bar", "baz"]},
+            {"type": "string"},
+        ]
+
 
 # This function converts a dataclass to a TypedDict
 def dataclass_to_typeddict(dc_cls: type):
