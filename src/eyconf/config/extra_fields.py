@@ -245,7 +245,7 @@ class ConfigExtra(Config[D]):
 
     def to_dict(self, extra_fields: bool = True) -> dict:
         """Get the full configuration data as a dictionary, including extra fields."""
-        data = asdict(self._data)
+        data = asdict_with_aliases(self._data)
         if extra_fields:
             data = merge_dicts(data, self.extra_data.to_dict())
         return data
@@ -254,6 +254,7 @@ class ConfigExtra(Config[D]):
         self, target, key, value: Any, _current_path: list[str]
     ) -> None:
         """Handle updating additional (non-schema) fields used in `super.update`."""
+
         extra_data: AttributeDict = self._extra_data
         for path_part in _current_path:
             extra_data = getattr(extra_data, path_part)
