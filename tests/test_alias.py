@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass, field
 
 from typing import Any, TypeVar
 import pytest
-from eyconf import Config
+from eyconf import Config, ConfigExtra
 from eyconf.asdict import asdict_with_aliases
 from eyconf.decorators import allow_additional, dict_access
 from eyconf.validation import (
@@ -115,3 +115,27 @@ class TestAlias:
 
         assert config.data.attr_field == 100
         assert config.data.str_field == "Test"
+
+
+class TestToDictAlias:
+    """Test that aliases are resolved properly when using the to_dict function."""
+
+    @pytest.mark.parametrize(
+        "config_class",
+        [
+            Config,
+            ConfigExtra,
+        ],
+    )
+    def test_to_dict_with_aliases(
+        self,
+        config_class: type[Config | ConfigExtra],
+    ):
+        config = config_class(
+            data=AliasConfig(attr_field=55, str_field="AliasTest"), schema=AliasConfig
+        )
+
+        dump = config.to_dict()
+        assert dump["dict_field"] == 55
+        assert dump["str_field"] == "AliasTest"
+        assert "attr_field" not in dump
