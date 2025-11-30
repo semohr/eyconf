@@ -17,10 +17,10 @@ from typing import (
     cast,
 )
 
+from eyconf.asdict import asdict_with_aliases
 from eyconf.generate_yaml import dataclass_to_yaml
 from eyconf.type_utils import get_type_hints_resolve_namespace, is_dataclass_type
 from eyconf.utils import dataclass_from_dict
-from eyconf.asdict import asdict_with_aliases
 from eyconf.validation import to_json_schema, validate, validate_json
 
 if TYPE_CHECKING:

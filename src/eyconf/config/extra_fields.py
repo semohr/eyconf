@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from copy import deepcopy
-from dataclasses import asdict, dataclass, is_dataclass
+from dataclasses import dataclass, is_dataclass
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 from eyconf.asdict import asdict_with_aliases
@@ -254,7 +254,6 @@ class ConfigExtra(Config[D]):
         self, target, key, value: Any, _current_path: list[str]
     ) -> None:
         """Handle updating additional (non-schema) fields used in `super.update`."""
-
         extra_data: AttributeDict = self._extra_data
         for path_part in _current_path:
             extra_data = getattr(extra_data, path_part)
