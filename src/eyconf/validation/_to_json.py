@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from dataclasses import fields, is_dataclass
 from functools import cache
 from types import NoneType, UnionType
-from typing import Annotated, Any, ClassVar, Literal, get_args, get_origin
+from typing import Annotated, Any, ClassVar, Literal, Union, get_args, get_origin
 
 # for some reason typing  Sequence and abc sequence are not the same type
 from typing import Sequence as TypingSequence  # noqa: UP035
@@ -130,7 +130,7 @@ def __convert_type_to_schema(
         return __convert_type_to_schema(field_type, **kwargs)[0], is_required
 
     # Handler union
-    if origin is UnionType:
+    if origin is UnionType or origin is Union:
         allowed_types = set(get_args(field_type))
         if NoneType in allowed_types:
             is_required = False
