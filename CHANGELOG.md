@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+
+## [0.4.1]
+
+* Fixed an regression where Unions with literals e.g. `Literal["foo"] | str` would not be detected correctly validated.
+
 ## [0.4.0]
 
 * Added proper support for adding additional properties to configuration schemas via the `ConfigExtra` class. This allows users to include extra fields in their configuration that are not explicitly defined in the dataclass schema. All partial support for 
