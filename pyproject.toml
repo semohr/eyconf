@@ -1,6 +1,6 @@
 [project]
 name = "eyconf"
-version = "0.4.1"
+version = "0.4.2"
 authors = [{ name = "Sebastian B. Mohr", email = "sebastian@mohrenclan.de" }]
 description = "Easy Yaml based Configuration for Python"
 readme = "README.md"

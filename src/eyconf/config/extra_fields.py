@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from copy import deepcopy
-from dataclasses import asdict, dataclass, is_dataclass
+from dataclasses import dataclass, is_dataclass
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 from eyconf.asdict import asdict_with_aliases
@@ -245,7 +245,7 @@ class ConfigExtra(Config[D]):
 
     def to_dict(self, extra_fields: bool = True) -> dict:
         """Get the full configuration data as a dictionary, including extra fields."""
-        data = asdict(self._data)
+        data = asdict_with_aliases(self._data)
         if extra_fields:
             data = merge_dicts(data, self.extra_data.to_dict())
         return data

@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.2]
+
+* Fixed an issue where `to_dict` did not respect field aliases when converting configuration data to a dictionary. Now, fields with defined aliases will use those aliases as keys in the resulting dictionary.
 
 ## [0.4.1]
 
