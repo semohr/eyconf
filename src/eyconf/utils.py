@@ -13,8 +13,6 @@ from typing import (
     get_type_hints,
 )
 
-from eyconf.type_utils import iter_dataclass_type
-
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
 

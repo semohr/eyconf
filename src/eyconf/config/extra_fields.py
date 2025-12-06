@@ -2,15 +2,10 @@ from __future__ import annotations
 
 import logging
 from copy import deepcopy
-from dataclasses import dataclass, is_dataclass
+from dataclasses import is_dataclass
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 from eyconf.asdict import asdict_with_aliases
-from eyconf.decorators import (
-    _aliases_map,
-    _get_attr_resolve_alias,
-    _set_attr_resolve_alias,
-)
 from eyconf.type_utils import is_dataclass_type, iter_dataclass_type
 from eyconf.utils import (
     dataclass_from_dict,
