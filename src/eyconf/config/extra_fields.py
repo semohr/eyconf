@@ -61,28 +61,28 @@ class AccessProxy(Generic[D]):
             )
 
     @property
-    def dict_path(self) -> list[str]:
+    def _dict_path(self) -> list[str]:
         """Get the full dict path to this AccessProxy."""
         if self._dict_key is None or self._parent is None:
             return []
         else:
-            return self._parent.dict_path + [self._dict_key]
+            return self._parent._dict_path + [self._dict_key]
 
     @property
-    def attr_path(self) -> list[str]:
+    def _attr_path(self) -> list[str]:
         """Get the full attribute path to this AccessProxy."""
         if self._parent is None or self._attr_key is None:
             return []
         else:
-            return self._parent.attr_path + [self._attr_key]
+            return self._parent._attr_path + [self._attr_key]
 
     @property
-    def root_schema(self) -> type[D]:
+    def _root_schema(self) -> type[D]:
         """Get the root schema dataclass."""
         if self._parent is None:
             return type(self._data)
         else:
-            return self._parent.root_schema
+            return self._parent._root_schema
 
     def to_dict(self) -> dict:
         """Convert the AccessProxy to a standard dictionary."""
@@ -94,7 +94,7 @@ class AccessProxy(Generic[D]):
     def __getattr__(self, attr_key: str) -> Any:
         """Get field via attribute style access (non-aliased keys)."""
         dict_key = resolve_alias_attr_path_to_dict_path(
-            self.root_schema, self.attr_path + [attr_key]
+            self._root_schema, self._attr_path + [attr_key]
         )[-1]
         try:
             data = getattr(self._data, attr_key)
@@ -123,14 +123,14 @@ class AccessProxy(Generic[D]):
                 setattr(self._data, attr_key, value)
             else:
                 dict_key = resolve_alias_attr_path_to_dict_path(
-                    self.root_schema, self.attr_path + [attr_key]
+                    self._root_schema, self._attr_path + [attr_key]
                 )[-1]
                 self._extra_data[dict_key] = value
 
     def __getitem__(self, dict_key: str) -> Any:
         """Get field via dict style acces (alias)."""
         attr_key = resolve_alias_dict_path_to_attr_path(
-            self.root_schema, self.dict_path + [dict_key]
+            self._root_schema, self._dict_path + [dict_key]
         )[-1]
         if hasattr(self._data, attr_key):
             return self.__getattr__(attr_key)
@@ -140,7 +140,7 @@ class AccessProxy(Generic[D]):
     def __setitem__(self, dict_key: str, value: Any) -> None:
         """Set field via dict style access (alias)."""
         attr_key = resolve_alias_dict_path_to_attr_path(
-            self.root_schema, self.dict_path + [dict_key]
+            self._root_schema, self._dict_path + [dict_key]
         )[-1]
         if hasattr(self._data, attr_key):
             self.__setattr__(attr_key, value)
