@@ -89,7 +89,8 @@ class Config(Generic[D]):
             target_type: type[DataclassInstance],
             target: DataclassInstance,
             update_data: dict,
-            _current_path: list[str] = [],
+            _current_attr_path: list[str] = [],
+            _current_dict_path: list[str] = [],
         ):
             target_annotations = get_type_hints_resolve_namespace(target_type)
 
@@ -100,36 +101,36 @@ class Config(Generic[D]):
                 if "alias" in f.metadata
             }
 
-            for key, value in update_data.items():
+            for attr_key, value in update_data.items():
                 # resolve if key has an alias
-                orig_key = key
-                if alias_field := alias_fields.get(key):
-                    key = alias_field.name
+                dict_key = attr_key
+                if alias_field := alias_fields.get(attr_key):
+                    attr_key = alias_field.name
 
                 # TODO: marker
-                # if key in ["import", "import_"]:
-                # breakpoint()
+                # if attr_key in ["import", "import_"]:
+                #     breakpoint()
 
-                if hasattr(target, key):
-                    # folders : dict[str, InboxFolder]
-                    current_value = getattr(target, key)
-                    # current_value = {placeholder:Config42()}
+                if hasattr(target, attr_key):
+                    current_value = getattr(target, attr_key)
 
                     # Handle dataclass fields
                     if is_dataclass(current_value):
                         _update(
-                            target_annotations[key],
+                            target_annotations[attr_key],
                             current_value,  # type: ignore[arg-type]
                             value,
-                            _current_path + [key],
+                            _current_attr_path + [attr_key],
+                            _current_dict_path + [dict_key],
                         )
+
                     # Handle Optional fields that were previously None
                     elif current_value is None and isinstance(value, dict):
                         nested_instance = dataclass_from_dict(
-                            target_annotations[key], value
+                            target_annotations[attr_key], value
                         )
-                        setattr(target, key, nested_instance)
-                    elif current_annotation := target_annotations.get(key):
+                        setattr(target, attr_key, nested_instance)
+                    elif current_annotation := target_annotations.get(attr_key):
                         nested = dataclass_from_dict(
                             current_annotation,
                             # TODO: If we want to implement a merge strategy
@@ -137,16 +138,21 @@ class Config(Generic[D]):
                             # merge_dicts(asdict(current_value), value),  # type: ignore[arg-type]
                             value,
                         )
-                        setattr(target, key, nested)
+                        setattr(target, attr_key, nested)
                     else:
                         # Primitives and direct assignments
                         # Can only be reached if a dynamic field is added
                         # to the dataclass instance
-                        setattr(target, key, value)
+                        setattr(target, attr_key, value)
                 else:
                     # Non-schema fields
                     self._update_additional(
-                        target, orig_key, value, _current_path=_current_path
+                        target=target,
+                        attr_key=attr_key,
+                        dict_key=dict_key,
+                        value=value,
+                        _current_attr_path=_current_attr_path,
+                        _current_dict_path=_current_dict_path,
                     )
 
         old_data = deepcopy(self._data)
@@ -161,7 +167,13 @@ class Config(Generic[D]):
             raise e from e
 
     def _update_additional(
-        self, target, key, value: Any, _current_path: list[str]
+        self,
+        target,
+        attr_key,
+        dict_key,
+        value: Any,
+        _current_attr_path: list[str],
+        _current_dict_path: list[str],
     ) -> None:
         """Handle updating additional (non-schema) fields.
 
@@ -169,7 +181,7 @@ class Config(Generic[D]):
         """
         raise AttributeError(
             "Cannot set unknown attribute"
-            f" '{'.'.join(_current_path + [key])}' on configuration."
+            f" '{'.'.join(_current_attr_path + [attr_key])}' on configuration."
         )
 
     def overwrite(self, data: dict | D):
