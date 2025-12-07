@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import fields
+from dataclasses import field, fields
 from pprint import pprint
 from typing import (
     Any,
@@ -489,6 +489,23 @@ class TestToSchema:
             {"type": "string", "enum": ["bar", "baz"]},
             {"type": "string"},
         ]
+
+    def test_alias_handling(self):
+        @dataclass
+        class Schema:
+            bar: int = field(metadata={"alias": "the_bar"})
+            foo: str
+
+        schema = to_json_schema(Schema)
+        assert schema == {
+            "type": "object",
+            "properties": {
+                "foo": {"type": "string"},
+                "the_bar": {"type": "integer"},
+            },
+            "required": ["the_bar", "foo"],
+            "additionalProperties": False,
+        }
 
 
 # This function converts a dataclass to a TypedDict

@@ -58,13 +58,12 @@ def to_json_schema(
     # Get type hints for the TypedDict
     type_hints = get_type_hints_resolve_namespace(type, include_extras=True)
     dataclass_fields = fields(type) if is_dataclass(type) else {}
-    alias_fields = {f.name: f for f in dataclass_fields if "alias" in f.metadata}
+    fieldname_to_metadata = {f.name: f.metadata for f in dataclass_fields if f.metadata}
 
     # Add the type hints to the schema
     for field_name, field_type in type_hints.items():
-        # Resolve alias
-        if alias_field := alias_fields.get(field_name):
-            field_name = alias_field.metadata["alias"]
+        if alias := fieldname_to_metadata.get(field_name, {}).get("alias"):
+            field_name = alias
 
         origin = get_origin(field_type)
         if origin is ClassVar:
@@ -74,6 +73,7 @@ def to_json_schema(
         p, r = __convert_type_to_schema(field_type, allow_additional=allow_additional)
         schema["properties"][field_name] = p
 
+        # Handle required fields
         if r:
             schema["required"].append(field_name)
 
