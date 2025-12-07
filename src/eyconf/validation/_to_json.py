@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from dataclasses import fields, is_dataclass
+from dataclasses import is_dataclass
 from functools import cache
 from types import NoneType, UnionType
 from typing import Annotated, Any, ClassVar, Literal, Union, get_args, get_origin

@@ -5,10 +5,9 @@ from dataclasses import fields, is_dataclass
 from types import NoneType, UnionType
 from typing import (
     TYPE_CHECKING,
-    Annotated,
     Any,
-    TypeVar,
     TypedDict,
+    TypeVar,
     get_args,
     get_origin,
     get_type_hints,

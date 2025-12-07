@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import logging
 from copy import deepcopy
-from dataclasses import fields, is_dataclass
+from dataclasses import is_dataclass
 from functools import cache
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 from eyconf.asdict import asdict_with_aliases
