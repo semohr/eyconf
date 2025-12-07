@@ -11,10 +11,6 @@ from eyconf.validation import (
     MultiConfigurationError,
     validate,
 )
-from eyconf.utils import (
-    resolve_alias_attr_path_to_dict_path,
-    resolve_alias_dict_path_to_attr_path,
-)
 
 T = TypeVar("T", bound=Any)
 
@@ -68,30 +64,6 @@ class NestedAliasConfig:
 class AliasDictConfig:
     attr_field: int = field(metadata={"alias": "dict_field"})
     str_field: str = "FortyTwo!"
-
-
-class TestPathHelper:
-    def test_resolve_alias_attr_to_dict(self):
-        dict_path = resolve_alias_attr_path_to_dict_path(
-            AliasConfig, ["attr_field", "str_field"]
-        )
-        assert dict_path == ["dict_field", "str_field"]
-
-        dict_path_nested = resolve_alias_attr_path_to_dict_path(
-            NestedAliasConfig, ["nested", "attr_field", "other_field"]
-        )
-        assert dict_path_nested == ["nested", "dict_field", "other_field"]
-
-    def test_resolve_alias_dict_to_attr(self):
-        attr_path = resolve_alias_dict_path_to_attr_path(
-            AliasConfig, ["dict_field", "str_field"]
-        )
-        assert attr_path == ["attr_field", "str_field"]
-
-        attr_path_nested = resolve_alias_dict_path_to_attr_path(
-            NestedAliasConfig, ["nested", "dict_field", "other_field"]
-        )
-        assert attr_path_nested == ["nested", "attr_field", "other_field"]
 
 
 class TestAlias:

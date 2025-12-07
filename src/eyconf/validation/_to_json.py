@@ -13,6 +13,7 @@ from typing_extensions import NotRequired
 from eyconf.constants import primitive_type_mapping
 from eyconf.decorators import check_allows_additional
 from eyconf.type_utils import get_type_hints_resolve_namespace
+from eyconf.utils import metadata_fields_from_dataclass
 
 SchemaType = dict[str, Any] | dict[str, str] | dict[Any, Any]
 
@@ -57,9 +58,7 @@ def to_json_schema(
 
     # Get type hints for the TypedDict
     type_hints = get_type_hints_resolve_namespace(type, include_extras=True)
-    dataclass_fields = fields(type) if is_dataclass(type) else {}
-    fieldname_to_metadata = {f.name: f.metadata for f in dataclass_fields if f.metadata}
-
+    fieldname_to_metadata = metadata_fields_from_dataclass(type)
     # Add the type hints to the schema
     for field_name, field_type in type_hints.items():
         if alias := fieldname_to_metadata.get(field_name, {}).get("alias"):

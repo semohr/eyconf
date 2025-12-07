@@ -14,8 +14,10 @@ from eyconf.type_utils import (
     iter_dataclass_type,
 )
 from eyconf.utils import (
+    Metadata,
     dataclass_from_dict,
     merge_dicts,
+    metadata_fields_from_dataclass,
 )
 from eyconf.validation import validate
 from eyconf.validation._to_json import to_json_schema
@@ -53,13 +55,9 @@ class AccessProxy(Generic[D]):
 
     @property
     @cache
-    def _fields_metadata(self) -> dict[str, MappingProxyType[Any, Any]]:
+    def _fields_metadata(self) -> dict[str, Metadata]:
         """Get the fields of the current dataclass schema."""
-        dataclass_fields = fields(self._data)
-        fieldname_to_metadata = {
-            f.name: f.metadata for f in dataclass_fields if f.metadata
-        }
-        return fieldname_to_metadata
+        return metadata_fields_from_dataclass(self._data)
 
     def _resolve_attr_to_dict_key(self, attr_key: str) -> str:
         """Resolve an attribute key to its dict key using aliasing."""
@@ -219,7 +217,7 @@ class ConfigExtra(Config[D]):
         dict_key_path = []
         for target, attr_key in path:
             # resolve attr_key to dict_key using aliasing
-            field_metadata = {f.name: f.metadata for f in fields(target) if f.metadata}
+            field_metadata = metadata_fields_from_dataclass(target)
             dict_key = field_metadata.get(attr_key, {}).get("alias", attr_key)
             dict_key_path.append(dict_key)
 

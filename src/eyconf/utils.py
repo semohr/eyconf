@@ -8,6 +8,7 @@ from typing import (
     Annotated,
     Any,
     TypeVar,
+    TypedDict,
     get_args,
     get_origin,
     get_type_hints,
@@ -131,111 +132,20 @@ def _dataclass_from_dict_inner(target_type: type, data: Any) -> Any:
     return data
 
 
-def resolve_alias_attr_path_to_dict_path(
-    schema: type[D],
-    attr_path: list[str],
-) -> list[str]:
-    """Translate between attribute- and dict- style access.
+class Metadata(TypedDict, total=False):
+    """Metadata for a dataclass field.
 
-    Parameters
-    ----------
-    schema : type[D]
-        The dataclass schema to use for alias resolution.
-    attr_path : list[str]
-        The path in attribute notation.
-
-    Returns
-    -------
-    list[str]
-        The translated path in dict notation.
+    This defines all metadata keys we use in eyconf for
+    config schema fields.
     """
-    dict_path = []
-    current_schema = schema
-    for attr in attr_path:
-        if current_schema is not None:
-            aliases = {
-                f.name: f.metadata["alias"]
-                for f in fields(current_schema)
-                if "alias" in f.metadata
-            }
-        else:
-            # we set to None once we traverse out of the schema
-            dict_path.append(attr)
-            continue
 
-        if attr in aliases:
-            dict_path.append(aliases[attr])
-        else:
-            dict_path.append(attr)
-
-        # Update current schema for next iteration
-        type_hints = get_type_hints(current_schema)
-        if attr in type_hints:
-            next_type = type_hints[attr]
-            origin = get_origin(next_type)
-            if origin is Annotated:
-                next_type = get_args(next_type)[0]
-            if is_dataclass(next_type):
-                current_schema = next_type
-            else:
-                current_schema = None
-        else:
-            current_schema = None
-
-    return dict_path
+    alias: str
+    """Alias for the field when used in dict representations."""
 
 
-def resolve_alias_dict_path_to_attr_path(
-    schema: type[D],
-    dict_path: list[str],
-) -> list[str]:
-    """Translate between attribute- and dict- style access.
-
-    Parameters
-    ----------
-    schema : type[D]
-        The dataclass schema to use for alias resolution.
-    dict_path : list[str]
-        The path in dict notation.
-
-    Returns
-    -------
-    list[str]
-        The translated path in attribute notation.
-    """
-    attr_path = []
-    current_schema = schema
-    for dict_key in dict_path:
-        if current_schema is not None:
-            aliases = {
-                f.metadata["alias"]: f.name
-                for f in fields(current_schema)
-                if "alias" in f.metadata
-            }
-        else:
-            # we set to None once we traverse out of the schema
-            attr_path.append(dict_key)
-            continue
-
-        if dict_key in aliases:
-            attr_path.append(aliases[dict_key])
-            attr = aliases[dict_key]
-        else:
-            attr_path.append(dict_key)
-            attr = dict_key
-
-        # Update current schema for next iteration
-        type_hints = get_type_hints(current_schema)
-        if attr in type_hints:
-            next_type = type_hints[attr]
-            origin = get_origin(next_type)
-            if origin is Annotated:
-                next_type = get_args(next_type)[0]
-            if is_dataclass(next_type):
-                current_schema = next_type
-            else:
-                current_schema = None
-        else:
-            current_schema = None
-
-    return attr_path
+def metadata_fields_from_dataclass(
+    type: type | DataclassInstance,
+) -> dict[str, Metadata]:
+    """Extract metadata from dataclass fields."""
+    dataclass_fields = fields(type) if is_dataclass(type) else {}
+    return {f.name: Metadata(**f.metadata) for f in dataclass_fields if f.metadata}

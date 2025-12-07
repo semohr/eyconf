@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Any
 import pytest
 from eyconf.config import ConfigExtra
 from eyconf.config.extra_fields import AccessProxy
@@ -170,7 +171,7 @@ class TestAccessProxy:
     @pytest.fixture
     def proxy(self):
         config_data = Config42()
-        extra_data = dict()
+        extra_data: dict[str, Any] = dict()
         return AccessProxy(
             config_data,
             extra_data,
@@ -207,7 +208,7 @@ class TestAccessProxy:
 
     def test_to_dict(self):
         config_data = Config42()
-        extra_data = dict()
+        extra_data: dict[str, Any] = dict()
         proxy = AccessProxy(
             config_data,
             extra_data,
