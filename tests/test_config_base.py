@@ -166,15 +166,22 @@ class TestUpdate:
 
         assert conf42.data.int_field == 42
 
-    def test_additional_fields(self):
-        conf42_add = Config(Config42AllowAdditional(), schema=Config42AllowAdditional)
-        # validation should pass, but _setting_ values not.
-        # for that, we have ConfigExtra.
-        with pytest.raises(AttributeError):
-            conf42_add.update({"int_field": 100, "new_field": "I am new!"})
+    def test_update_additional(self, conf_nested):
+        with pytest.raises(AttributeError, match="Cannot set non-schema field"):
+            conf_nested.update({"int_field": 100, "new_field": "I am new!"})
+
+        with pytest.raises(AttributeError, match="nested.new_field"):
+            conf_nested.update(
+                {
+                    "nested": {"int_field": 100, "new_field": "I am new in nested!"},
+                }
+            )
 
     def test_dynamic_fields(self):
-        """Test that dynamic fields are not affected by update."""
+        """Test that dynamic fields are not affected by update.
+
+        This is a bit of an edge case, that should not really be used in practice...
+        """
         conf42_add = Config(Config42AllowAdditional(), schema=Config42AllowAdditional)
         conf42_add.data.dynamic_field = "I am dynamic!"  # type: ignore
 

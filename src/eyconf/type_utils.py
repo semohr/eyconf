@@ -92,6 +92,11 @@ def is_dataclass_type(obj: Any) -> TypeGuard[type]:
     return is_dataclass(obj) and isinstance(obj, type)
 
 
+def is_dataclass_instance(obj: Any) -> TypeGuard[DataclassInstance]:
+    """Check if an object is a dataclass instance."""
+    return is_dataclass(obj) and not isinstance(obj, type)
+
+
 def iter_dataclass_type(schema: type[D]) -> Iterator[type[DataclassInstance]]:
     """Iterate over all dataclass nested instances in the given dataclass type.
 

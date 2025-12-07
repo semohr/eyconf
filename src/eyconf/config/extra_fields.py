@@ -2,16 +2,20 @@ from __future__ import annotations
 
 import logging
 from copy import deepcopy
-from dataclasses import is_dataclass
+from dataclasses import fields, is_dataclass
+from functools import cache
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 from eyconf.asdict import asdict_with_aliases
-from eyconf.type_utils import is_dataclass_type, iter_dataclass_type
+from eyconf.type_utils import (
+    is_dataclass_instance,
+    is_dataclass_type,
+    iter_dataclass_type,
+)
 from eyconf.utils import (
     dataclass_from_dict,
     merge_dicts,
-    resolve_alias_attr_path_to_dict_path,
-    resolve_alias_dict_path_to_attr_path,
 )
 from eyconf.validation import validate
 from eyconf.validation._to_json import to_json_schema
@@ -36,53 +40,37 @@ class AccessProxy(Generic[D]):
 
     # this proxies' location in the overall config tree
     _parent: AccessProxy | None
-    _dict_key: str | None
-    _attr_key: str | None
 
     def __init__(
         self,
         data: D,
         extra_data: dict,
-        attr_key: str | None = None,
-        dict_key: str | None = None,
         parent: AccessProxy | None = None,
     ):
         self._data = data
         self._extra_data = extra_data
-        self._attr_key = attr_key
-        self._dict_key = dict_key
         self._parent = parent
 
-        if (attr_key is None or dict_key is None or parent is None) and (
-            attr_key is not None or dict_key is not None or parent is not None
-        ):
-            raise ValueError(
-                "attr_key, dict_key and parent must either all be None or all be set!"
-            )
-
     @property
-    def _dict_path(self) -> list[str]:
-        """Get the full dict path to this AccessProxy."""
-        if self._dict_key is None or self._parent is None:
-            return []
-        else:
-            return self._parent._dict_path + [self._dict_key]
+    @cache
+    def _fields_metadata(self) -> dict[str, MappingProxyType[Any, Any]]:
+        """Get the fields of the current dataclass schema."""
+        dataclass_fields = fields(self._data)
+        fieldname_to_metadata = {
+            f.name: f.metadata for f in dataclass_fields if f.metadata
+        }
+        return fieldname_to_metadata
 
-    @property
-    def _attr_path(self) -> list[str]:
-        """Get the full attribute path to this AccessProxy."""
-        if self._parent is None or self._attr_key is None:
-            return []
-        else:
-            return self._parent._attr_path + [self._attr_key]
+    def _resolve_attr_to_dict_key(self, attr_key: str) -> str:
+        """Resolve an attribute key to its dict key using aliasing."""
+        return self._fields_metadata.get(attr_key, {}).get("alias", attr_key)
 
-    @property
-    def _root_schema(self) -> type[D]:
-        """Get the root schema dataclass."""
-        if self._parent is None:
-            return type(self._data)
-        else:
-            return self._parent._root_schema
+    def _resolve_dict_to_attr_key(self, dict_key: str) -> str:
+        """Resolve a dict key to its attribute key using aliasing."""
+        for attr, metadata in self._fields_metadata.items():
+            if metadata.get("alias") == dict_key:
+                return attr
+        return dict_key
 
     def to_dict(self) -> dict:
         """Convert the AccessProxy to a standard dictionary."""
@@ -93,24 +81,19 @@ class AccessProxy(Generic[D]):
 
     def __getattr__(self, attr_key: str) -> Any:
         """Get field via attribute style access (non-aliased keys)."""
-        dict_key = resolve_alias_attr_path_to_dict_path(
-            self._root_schema, self._attr_path + [attr_key]
-        )[-1]
+        dict_key: str = self._resolve_attr_to_dict_key(attr_key)
         try:
             data = getattr(self._data, attr_key)
-            if is_dataclass(data):
+            if is_dataclass_instance(data):
                 if dict_key not in self._extra_data:
                     self._extra_data[dict_key] = dict()
-                extra_data = self._extra_data[dict_key]
-
                 return AccessProxy(
-                    data=data,  # type: ignore[arg-type]
-                    extra_data=extra_data,
-                    attr_key=attr_key,
-                    dict_key=dict_key,
+                    data=data,
+                    extra_data=self._extra_data[dict_key],
                     parent=self,
                 )
-            return getattr(self._data, attr_key)
+            else:
+                return data
         except AttributeError:
             return self._extra_data[dict_key]
 
@@ -122,16 +105,12 @@ class AccessProxy(Generic[D]):
             if hasattr(self._data, attr_key):
                 setattr(self._data, attr_key, value)
             else:
-                dict_key = resolve_alias_attr_path_to_dict_path(
-                    self._root_schema, self._attr_path + [attr_key]
-                )[-1]
+                dict_key = self._resolve_attr_to_dict_key(attr_key)
                 self._extra_data[dict_key] = value
 
     def __getitem__(self, dict_key: str) -> Any:
         """Get field via dict style acces (alias)."""
-        attr_key = resolve_alias_dict_path_to_attr_path(
-            self._root_schema, self._dict_path + [dict_key]
-        )[-1]
+        attr_key = self._resolve_dict_to_attr_key(dict_key)
         if hasattr(self._data, attr_key):
             return self.__getattr__(attr_key)
         else:
@@ -139,9 +118,7 @@ class AccessProxy(Generic[D]):
 
     def __setitem__(self, dict_key: str, value: Any) -> None:
         """Set field via dict style access (alias)."""
-        attr_key = resolve_alias_dict_path_to_attr_path(
-            self._root_schema, self._dict_path + [dict_key]
-        )[-1]
+        attr_key = self._resolve_dict_to_attr_key(dict_key)
         if hasattr(self._data, attr_key):
             self.__setattr__(attr_key, value)
         else:
@@ -232,30 +209,24 @@ class ConfigExtra(Config[D]):
 
     def _update_additional(
         self,
-        target,
-        attr_key,
-        dict_key,
         value: Any,
-        _current_attr_path: list[str],
-        _current_dict_path: list[str],
+        path: list[tuple[DataclassInstance, str]],
     ) -> None:
         """Handle updating additional (non-schema) fields used in `super.update`.
 
-        Because of aliasing, we have two conventions:
-        - `dict` for dict-style access (aliased)
-        - `attr` for dataclass, attribute-style access (non-aliased)
-
         Here, we update extra_data, which is a dict. So we use dict style.
         """
-        extra_data = self.data._extra_data
-        for path_part in _current_dict_path:
-            if path_part not in extra_data.keys():
-                extra_data[path_part] = dict()
-            extra_data = extra_data[path_part]
+        dict_key_path = []
+        for target, attr_key in path:
+            # resolve attr_key to dict_key using aliasing
+            field_metadata = {f.name: f.metadata for f in fields(target) if f.metadata}
+            dict_key = field_metadata.get(attr_key, {}).get("alias", attr_key)
+            dict_key_path.append(dict_key)
 
-        extra_data[dict_key] = value
+        extra_data: dict[str, Any] = self._extra_data
+        for dict_key in dict_key_path[:-1]:
+            if dict_key not in extra_data.keys():
+                extra_data[dict_key] = dict()
+            extra_data = extra_data[dict_key]
 
-        # if isinstance(value, dict):
-        #     setattr(extra_data, key, AttributeDict(**value))
-        # else:
-        #     setattr(extra_data, key, value)
+        extra_data[dict_key_path[-1]] = value

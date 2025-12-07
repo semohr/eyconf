@@ -19,7 +19,11 @@ from typing import (
 
 from eyconf.asdict import asdict_with_aliases
 from eyconf.generate_yaml import dataclass_to_yaml
-from eyconf.type_utils import get_type_hints_resolve_namespace, is_dataclass_type
+from eyconf.type_utils import (
+    get_type_hints_resolve_namespace,
+    is_dataclass_instance,
+    is_dataclass_type,
+)
 from eyconf.utils import dataclass_from_dict
 from eyconf.validation import to_json_schema, validate, validate_json
 
@@ -89,13 +93,27 @@ class Config(Generic[D]):
             target_type: type[DataclassInstance],
             target: DataclassInstance,
             update_data: dict,
-            _current_attr_path: list[str] = [],
-            _current_dict_path: list[str] = [],
+            path: list[tuple[DataclassInstance, str]] | None = None,
         ):
+            """Recursive update helper function.
+
+            Parameters
+            ----------
+            target_type : type[DataclassInstance]
+                The dataclass type of the target instance.
+            target : DataclassInstance
+                The dataclass instance to update.
+            update_data : dict
+                The update data to apply.
+            path : list[tuple[DataclassInstance, str]] | None
+                The current path in the dataclass tree (root-to-leaf). [0] is parent instance,
+                [1] is attr key used to access the target from from its parent. E.g.
+                [(root_instance, "child_field"), (child_instance, "grandchild_field")]
+            """
             target_annotations = get_type_hints_resolve_namespace(target_type)
 
             # Rewrite key, from alias to field name
-            alias_fields = {
+            alias_to_fields = {
                 f.metadata["alias"]: f
                 for f in fields(target_type)
                 if "alias" in f.metadata
@@ -103,25 +121,19 @@ class Config(Generic[D]):
 
             for attr_key, value in update_data.items():
                 # resolve if key has an alias
-                dict_key = attr_key
-                if alias_field := alias_fields.get(attr_key):
+                if alias_field := alias_to_fields.get(attr_key):
                     attr_key = alias_field.name
-
-                # TODO: marker
-                # if attr_key in ["import", "import_"]:
-                #     breakpoint()
 
                 if hasattr(target, attr_key):
                     current_value = getattr(target, attr_key)
 
                     # Handle dataclass fields
-                    if is_dataclass(current_value):
+                    if is_dataclass_instance(current_value):
                         _update(
                             target_annotations[attr_key],
-                            current_value,  # type: ignore[arg-type]
+                            current_value,
                             value,
-                            _current_attr_path + [attr_key],
-                            _current_dict_path + [dict_key],
+                            path=(path or []) + [(target, attr_key)],
                         )
 
                     # Handle Optional fields that were previously None
@@ -147,41 +159,35 @@ class Config(Generic[D]):
                 else:
                     # Non-schema fields
                     self._update_additional(
-                        target=target,
-                        attr_key=attr_key,
-                        dict_key=dict_key,
-                        value=value,
-                        _current_attr_path=_current_attr_path,
-                        _current_dict_path=_current_dict_path,
+                        value,
+                        path=(path or []) + [(target, attr_key)],
                     )
 
         old_data = deepcopy(self._data)
-        update_dict = data if not is_dataclass(data) else asdict(data)
-
-        _update(self._schema, self._data, update_dict)
+        _update(self._schema, self._data, data)
 
         try:
             self.validate()
-        except Exception as e:
+        except Exception:
             self._data = old_data
-            raise e from e
+            raise
 
     def _update_additional(
         self,
-        target,
-        attr_key,
-        dict_key,
         value: Any,
-        _current_attr_path: list[str],
-        _current_dict_path: list[str],
+        path: list[tuple[DataclassInstance, str]],
     ) -> None:
         """Handle updating additional (non-schema) fields.
 
         Can be overwritten in subclasses.
         """
+        target, attr_key = path[-1]
+        root_name = type(path[0][0]).__name__
+        path_str = f"{root_name}" + "".join(f".{attr}" for _, attr in path)
         raise AttributeError(
-            "Cannot set unknown attribute"
-            f" '{'.'.join(_current_attr_path + [attr_key])}' on configuration."
+            f"Cannot set non-schema field '{attr_key}' "
+            f"on dataclass '{type(target).__name__}'!"
+            f"\n(at {path_str})"
         )
 
     def overwrite(self, data: dict | D):
