@@ -215,10 +215,27 @@ class TestAccessProxy:
         )
         proxy.foo = "bar"
 
-        result = proxy.to_dict()
+        result = proxy._to_dict()
         expected = {
             "int_field": 42,
             "str_field": "FortyTwo!",
             "foo": "bar",
         }
         assert result == expected
+
+class TestReset:
+    def test_simple(self, conf42: ConfigExtra[Config42]):
+        conf42.update(
+            {
+                "int_field": 100,
+                "str_field": "Updated value!",
+            }
+        )
+
+        assert conf42.data.int_field == 100
+        assert conf42.data.str_field == "Updated value!"
+
+        conf42.reset()
+
+        assert conf42.data.int_field == 42
+        assert conf42.data.str_field == "FortyTwo!"

@@ -69,7 +69,7 @@ class AccessProxy(Generic[D]):
                 return attr
         return dict_key
 
-    def to_dict(self) -> dict:
+    def _to_dict(self) -> dict:
         """Convert the AccessProxy to a standard dictionary."""
         extra = deepcopy(self._extra_data)
         data = deepcopy(asdict_with_aliases(self._data))
@@ -133,6 +133,7 @@ class ConfigExtra(Config[D]):
     """
 
     _extra_data: dict[str, Any]
+    _access_proxy: AccessProxy[D]
 
     def __init__(
         self,
@@ -172,20 +173,37 @@ class ConfigExtra(Config[D]):
         if is_dataclass(data):
             self._data = cast(D, data)
         else:
-            # self._data = None  # type: ignore
-            # self.update(data)
             self._data = dataclass_from_dict(self._schema, data)
 
-    @property
-    def data(self) -> AccessProxy[D]:  # type: ignore
-        """Get the configuration data wrapped in a dynamic accessor.
-
-        Care: Instance checks will not work as expected on this property.
-        """
-        return AccessProxy(
+        self._access_proxy = AccessProxy(
             data=self._data,
             extra_data=self._extra_data,
         )
+
+    def reset(self):
+        """Reset the configuration data to the default values."""
+        super().reset()
+        self._access_proxy = AccessProxy(
+            data=self._data,
+            extra_data=self._extra_data,
+        )
+
+    @property
+    def data(self) -> D:
+        """Get the configuration data wrapped in a dynamic accessor.
+
+        Care: Instance checks will not work as expected on this property.
+
+        We have two non-ideal choices for the type hint here:
+        - if we use D, we will get a wrong type_error for e.g. `config.data.my_field.to_dict()`
+        - if we use AccessProxy[D], we wont get the nice type_checking against the schema.
+        """
+        return self._access_proxy  # type: ignore
+
+    @property
+    def proxy(self) -> AccessProxy[D]:
+        """Convenience Property for setting non-schema fields."""
+        return self._access_proxy
 
     @property
     def schema_data(self) -> D:
@@ -199,9 +217,9 @@ class ConfigExtra(Config[D]):
 
     def to_dict(self, extra_fields: bool = True) -> dict:
         """Get the full configuration data as a dictionary, including extra fields."""
-        data = asdict_with_aliases(self.data._data)
+        data = asdict_with_aliases(self.proxy._data)
         if extra_fields:
-            data = merge_dicts(data, self.data._extra_data)
+            data = merge_dicts(data, self.proxy._extra_data)
         return data
 
     def _update_additional(

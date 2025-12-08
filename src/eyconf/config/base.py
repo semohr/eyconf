@@ -106,7 +106,8 @@ class Config(Generic[D]):
             update_data : dict
                 The update data to apply.
             path : list[tuple[DataclassInstance, str]] | None
-                The current path in the dataclass tree (root-to-leaf). [0] is parent instance,
+                The current path in the dataclass tree (root-to-leaf).
+                [0] is parent instance,
                 [1] is attr key used to access the target from from its parent. E.g.
                 [(root_instance, "child_field"), (child_instance, "grandchild_field")]
             """
