@@ -64,9 +64,9 @@ class AccessProxy(Generic[D]):
 
     def _resolve_dict_to_attr_key(self, dict_key: str) -> str:
         """Resolve a dict key to its attribute key using aliasing."""
-        for attr, metadata in self._fields_metadata.items():
+        for attr_key, metadata in self._fields_metadata.items():
             if metadata.get("alias") == dict_key:
-                return attr
+                return attr_key
         return dict_key
 
     def _to_dict(self) -> dict:

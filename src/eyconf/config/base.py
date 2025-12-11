@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from copy import deepcopy
-from dataclasses import asdict, fields, is_dataclass
+from dataclasses import asdict, is_dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -24,7 +24,7 @@ from eyconf.type_utils import (
     is_dataclass_instance,
     is_dataclass_type,
 )
-from eyconf.utils import dataclass_from_dict
+from eyconf.utils import dataclass_from_dict, dict_items_resolve_aliases
 from eyconf.validation import to_json_schema, validate, validate_json
 
 if TYPE_CHECKING:
@@ -113,18 +113,7 @@ class Config(Generic[D]):
             """
             target_annotations = get_type_hints_resolve_namespace(target_type)
 
-            # Rewrite key, from alias to field name
-            alias_to_fields = {
-                f.metadata["alias"]: f
-                for f in fields(target_type)
-                if "alias" in f.metadata
-            }
-
-            for key, value in update_data.items():
-                # resolve to attribute style keys (alias->non-alias)
-                if alias_field := alias_to_fields.get(key):
-                    key = alias_field.name
-
+            for key, value in dict_items_resolve_aliases(update_data, target_type):
                 if hasattr(target, key):
                     current_value = getattr(target, key)
 

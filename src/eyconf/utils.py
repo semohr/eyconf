@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import fields, is_dataclass
+from collections.abc import Iterable
+from dataclasses import Field, fields, is_dataclass
 from types import NoneType, UnionType
 from typing import (
     TYPE_CHECKING,
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 D = TypeVar("D", bound="DataclassInstance")
+T = TypeVar("T")
 
 
 def merge_dicts(a: dict, b: dict, path=[]):
@@ -142,9 +144,33 @@ class Metadata(TypedDict, total=False):
     """Alias for the field when used in dict representations."""
 
 
+def get_metadata(
+    type: type | DataclassInstance,
+) -> Iterable[tuple[Field[Any], Metadata]]:
+    """Extract metadata from dataclass fields."""
+    dataclass_fields = fields(type) if is_dataclass(type) else {}
+    return ((f, Metadata(**f.metadata)) for f in dataclass_fields if f.metadata)
+
+
 def metadata_fields_from_dataclass(
     type: type | DataclassInstance,
 ) -> dict[str, Metadata]:
     """Extract metadata from dataclass fields."""
-    dataclass_fields = fields(type) if is_dataclass(type) else {}
-    return {f.name: Metadata(**f.metadata) for f in dataclass_fields if f.metadata}
+    return {f.name: m for f, m in get_metadata(type)}
+
+
+def dict_items_resolve_aliases(
+    data: dict[str, T],
+    type: type | DataclassInstance,
+) -> Iterable[tuple[str, T]]:
+    """`dict.items()` but resolves alias names.
+
+    Allows to iter a dictionary using the attribute style
+    access keys.
+
+    This resolve to attribute style keys (alias->non-alias).
+    """
+    alias_to_fields = {
+        m["alias"]: f.name for f, m in get_metadata(type) if "alias" in m
+    }
+    return ((alias_to_fields.get(key, key), value) for key, value in data.items())

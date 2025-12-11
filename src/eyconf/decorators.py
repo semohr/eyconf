@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import functools
 from collections.abc import Callable
-from dataclasses import fields, is_dataclass
+from dataclasses import is_dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -12,10 +12,12 @@ from typing import (
     runtime_checkable,
 )
 
+from eyconf.type_utils import is_dataclass_type
+from eyconf.utils import get_metadata
+
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
 
-from eyconf.type_utils import is_dataclass_type
 
 T = TypeVar("T")
 D = TypeVar("D", bound="DataclassInstance")
@@ -37,7 +39,7 @@ class DictSetAccess(Protocol):
 
 def _aliases_map(cls: DataclassInstance) -> dict[str, str]:
     """Get mapping of aliases to field names for a dataclass."""
-    return {f.metadata["alias"]: f.name for f in fields(cls) if "alias" in f.metadata}
+    return {m["alias"]: f.name for f, m in get_metadata(cls) if "alias" in m}
 
 
 def _get_attr_resolve_alias(self: DataclassInstance, key: str) -> Any:
