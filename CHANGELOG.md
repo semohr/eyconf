@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0]
+
+* Dropped AttributeDict for a plain dict object for extra keys
+* Added a number of utility functions around aliases and field metadata
+* Added `proxy` property to ConfigExtra for typed access of the Acessproxy
+
 ## [0.4.2]
 
 * Fixed an issue where `to_dict` did not respect field aliases when converting configuration data to a dictionary. Now, fields with defined aliases will use those aliases as keys in the resulting dictionary.

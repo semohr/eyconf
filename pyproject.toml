@@ -1,6 +1,6 @@
 [project]
 name = "eyconf"
-version = "0.4.2"
+version = "0.5.0"
 authors = [{ name = "Sebastian B. Mohr", email = "sebastian@mohrenclan.de" }]
 description = "Easy Yaml based Configuration for Python"
 readme = "README.md"
@@ -21,11 +21,9 @@ classifiers = [
 ]
 dependencies = ["typing-extensions", "pyyaml", "jsonschema"]
 
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
 
 [project.optional-dependencies]
 typed = ["mypy", "types-pyyaml","types-jsonschema"]
@@ -46,7 +44,6 @@ cli = ["typer"]
 [tool.hatch.build.targets.wheel]
 packages = ["src/eyconf"]
 
-
 [tool.ruff]
 include = ["pyproject.toml", "src/**/*.py", "tests/**/*.py"]
 target-version = "py310"
@@ -55,7 +52,6 @@ target-version = "py310"
 select = ["I", "D", "F", "UP"]
 ignore = ["D104", "D100"]
 fixable = ["ALL"]
-
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["D", "I", "S", "W"]
@@ -70,7 +66,6 @@ addopts = ["--import-mode=importlib", "--cov=."]
 filterwarnings = ["error", "ignore::DeprecationWarning"]
 pythonpath = ["."]
 log_level = "DEBUG"
-
 
 [tool.coverage.report]
 omit = ["*/tests/*", "*/docs/*"]
