@@ -82,7 +82,7 @@ class Config(Generic[D]):
         """Validate the current data against the schema."""
         validate(self._data, self._json_schema)
 
-    def update(self, data: dict):
+    def update(self, data: dict[str, Any]):
         """Update the configuration with provided data.
 
         This applies an partial update to the existing configuration data.
@@ -92,7 +92,7 @@ class Config(Generic[D]):
         def _update(
             target_type: type[DataclassInstance],
             target: DataclassInstance,
-            update_data: dict,
+            update_data: dict[str, Any],
             path: list[tuple[DataclassInstance, str]] | None = None,
         ):
             """Recursive update helper function.
@@ -120,30 +120,30 @@ class Config(Generic[D]):
                 if "alias" in f.metadata
             }
 
-            for attr_key, value in update_data.items():
-                # resolve if key has an alias
-                if alias_field := alias_to_fields.get(attr_key):
-                    attr_key = alias_field.name
+            for key, value in update_data.items():
+                # resolve to attribute style keys (alias->non-alias)
+                if alias_field := alias_to_fields.get(key):
+                    key = alias_field.name
 
-                if hasattr(target, attr_key):
-                    current_value = getattr(target, attr_key)
+                if hasattr(target, key):
+                    current_value = getattr(target, key)
 
                     # Handle dataclass fields
                     if is_dataclass_instance(current_value):
                         _update(
-                            target_annotations[attr_key],
+                            target_annotations[key],
                             current_value,
                             value,
-                            path=(path or []) + [(target, attr_key)],
+                            path=(path or []) + [(target, key)],
                         )
 
                     # Handle Optional fields that were previously None
                     elif current_value is None and isinstance(value, dict):
                         nested_instance = dataclass_from_dict(
-                            target_annotations[attr_key], value
+                            target_annotations[key], value
                         )
-                        setattr(target, attr_key, nested_instance)
-                    elif current_annotation := target_annotations.get(attr_key):
+                        setattr(target, key, nested_instance)
+                    elif current_annotation := target_annotations.get(key):
                         nested = dataclass_from_dict(
                             current_annotation,
                             # TODO: If we want to implement a merge strategy
@@ -151,17 +151,17 @@ class Config(Generic[D]):
                             # merge_dicts(asdict(current_value), value),  # type: ignore[arg-type]
                             value,
                         )
-                        setattr(target, attr_key, nested)
+                        setattr(target, key, nested)
                     else:
                         # Primitives and direct assignments
                         # Can only be reached if a dynamic field is added
                         # to the dataclass instance
-                        setattr(target, attr_key, value)
+                        setattr(target, key, value)
                 else:
                     # Non-schema fields
                     self._update_additional(
                         value,
-                        path=(path or []) + [(target, attr_key)],
+                        path=(path or []) + [(target, key)],
                     )
 
         old_data = deepcopy(self._data)

@@ -44,10 +44,11 @@ class TestDataProperties:
         assert schema_data.str_field == "FortyTwo!"
 
     def test_extra_data(self, conf42: ConfigExtra[Config42]):
-        conf42.data.new_field = "New Value"
-        assert isinstance(conf42.data._extra_data, dict)
-        assert conf42.data._extra_data["new_field"] == "New Value"
-        assert conf42.data.new_field == "New Value"
+        conf42.proxy.new_field = "New Value"
+        assert isinstance(conf42.proxy._extra_data, dict)
+        assert conf42.proxy._extra_data["new_field"] == "New Value"
+        assert conf42.proxy["new_field"] == "New Value"
+        assert conf42.proxy.new_field == "New Value"
 
 
 class TestUpdate:
@@ -56,7 +57,7 @@ class TestUpdate:
 
         config.update({"unknown_field": "I am unknown!"})
 
-        assert config.data.unknown_field == "I am unknown!"
+        assert config.proxy.unknown_field == "I am unknown!"
         assert config._extra_data["unknown_field"] == "I am unknown!"
         with pytest.raises(AttributeError):
             _ = config._data.non_existent_field  # type: ignore[attr-defined]
@@ -125,14 +126,14 @@ class TestUpdate:
         assert config.data.nested.folders["config1"].str_field == "One"
         assert config.data.nested.folders["config2"].int_field == 2
         assert config.data.nested.folders["config2"].str_field == "Two"
-        assert config.data.nested.unknown_field == "I am unknown!"
+        assert config.proxy.nested.unknown_field == "I am unknown!"
 
     @pytest.mark.skip(reason="Changed design, no longer using attribute dicts")
     def test_unknown_nested(self):
         config = ConfigExtra(Config42())
 
         config.update({"level_one": {"level_two": {"level_three": "Deep Value"}}})
-        assert config.data.level_one.level_two.level_three == "Deep Value"
+        assert config.proxy.level_one.level_two.level_three == "Deep Value"
 
 
 class TestToDict:
@@ -149,7 +150,7 @@ class TestToDict:
         assert result == expected
 
     def test_to_dict_with_extra(self, conf42: ConfigExtra[Config42]):
-        conf42.data.new_field = "New Value"
+        conf42.proxy.new_field = "New Value"
         result = conf42.to_dict()
         expected = {
             "int_field": 42,
@@ -222,6 +223,7 @@ class TestAccessProxy:
             "foo": "bar",
         }
         assert result == expected
+
 
 class TestReset:
     def test_simple(self, conf42: ConfigExtra[Config42]):

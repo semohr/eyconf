@@ -124,14 +124,14 @@ class TestAlias:
 
         config = ConfigExtra(ConfigAliasedParent())
         assert config.data.import_.int_field == 42
-        assert config.data["import"].int_field == 42
+        assert config.proxy["import"].int_field == 42
 
-        config.data.import_.new_field = "New Value"
-        assert config.data.import_.new_field == "New Value"
-        assert config.data._extra_data["import"]["new_field"] == "New Value"
+        config.proxy.import_.new_field = "New Value"
+        assert config.proxy.import_.new_field == "New Value"
+        assert config.proxy._extra_data["import"]["new_field"] == "New Value"
         assert config._extra_data["import"]["new_field"] == "New Value"
-        assert config.data["import"].new_field == "New Value"
-        assert config.data["import"]["new_field"] == "New Value"
+        assert config.proxy["import"].new_field == "New Value"
+        assert config.proxy["import"]["new_field"] == "New Value"
 
 
 class TestToDictAlias:
