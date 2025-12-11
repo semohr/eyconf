@@ -2,17 +2,22 @@ from __future__ import annotations
 
 import logging
 from copy import deepcopy
-from dataclasses import dataclass, is_dataclass
+from dataclasses import is_dataclass
+from functools import cache
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 from eyconf.asdict import asdict_with_aliases
-from eyconf.decorators import (
-    _aliases_map,
-    _get_attr_resolve_alias,
-    _set_attr_resolve_alias,
+from eyconf.type_utils import (
+    is_dataclass_instance,
+    is_dataclass_type,
+    iter_dataclass_type,
 )
-from eyconf.type_utils import is_dataclass_type, iter_dataclass_type
-from eyconf.utils import merge_dicts
+from eyconf.utils import (
+    Metadata,
+    dataclass_from_dict,
+    merge_dicts,
+    metadata_fields_from_dataclass,
+)
 from eyconf.validation import validate
 from eyconf.validation._to_json import to_json_schema
 
@@ -28,148 +33,93 @@ D = TypeVar("D", bound="DataclassInstance")
 log = logging.getLogger(__name__)
 
 
-@dataclass
-class AttributeDict:
-    """A generic dataclass for holding dynamic attributes."""
-
-    def __init__(self, **kwargs: Any):
-        """Initialize the AttributeDict with given keyword arguments."""
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
-    def __getattr__(self, name: str) -> Any:
-        """Get attribute dynamically. If it does not exist, we create it."""
-        try:
-            return object.__getattribute__(self, name)
-        except AttributeError:
-            n = AttributeDict()
-            setattr(self, name, n)
-            return n
-
-    def __setattr__(self, name: str, value: Any):
-        """Set attribute dynamically."""
-        if isinstance(value, dict):
-            value = AttributeDict(**value)
-        object.__setattr__(self, name, value)
-
-    def __getitem__(self, key: str) -> Any:
-        """Get item dynamically."""
-        return self.__getattr__(key)
-
-    def __setitem__(self, key: str, value: Any) -> None:
-        """Set item dynamically."""
-        return self.__setattr__(key, value)
-
-    def to_dict(self) -> dict:
-        """Convert the AttributeDict to a standard dictionary."""
-        result = {}
-        for key, value in self.__dict__.items():
-            if key.startswith("__"):
-                continue
-            if isinstance(value, AttributeDict):
-                result[key] = value.to_dict()
-            else:
-                result[key] = value
-        return result
-
-    def __deepcopy__(self, memo: dict) -> AttributeDict:
-        """Create a deep copy of the AttributeDict."""
-        # Avoid infinite recursion with memo
-        if id(self) in memo:
-            return memo[id(self)]
-
-        # Create new instance
-        new_instance = AttributeDict()
-        memo[id(self)] = new_instance
-
-        # Deep copy all attributes
-        for key, value in self.__dict__.items():
-            # Use copy.deepcopy for nested objects, but handle AttributeDict specially
-            if isinstance(value, AttributeDict):
-                setattr(new_instance, key, deepcopy(value, memo))
-            else:
-                setattr(new_instance, key, deepcopy(value, memo))
-
-        return new_instance
-
-    def __repr__(self) -> str:
-        """Representation of the AttributeDict."""
-        return f"AttributeDict({self.to_dict()})"
-
-    def __str__(self) -> str:
-        """Use the dict string representation."""
-        return str(self.to_dict())
-
-    def __bool__(self) -> bool:
-        """Return False if the AttributeDict is empty, True otherwise."""
-        return bool(self.__dict__)
-
-    def __eq__(self, other: Any) -> bool:
-        """Equality comparison based on the internal dictionary."""
-        if isinstance(other, AttributeDict):
-            return self.to_dict() == other.to_dict()
-        if isinstance(other, dict):
-            return self.to_dict() == other
-        return False
-
-
 class AccessProxy(Generic[D]):
     """Proxy to access attributes dynamically."""
 
     _data: D
-    _extra_data: AttributeDict
+    _extra_data: dict
 
-    def __init__(self, data: D, extra_data: AttributeDict):
+    # this proxies' location in the overall config tree
+    _parent: AccessProxy | None
+
+    def __init__(
+        self,
+        data: D,
+        extra_data: dict,
+        parent: AccessProxy | None = None,
+    ):
         self._data = data
         self._extra_data = extra_data
+        self._parent = parent
 
-    def to_dict(self) -> dict:
+    @property
+    @cache
+    def _fields_metadata(self) -> dict[str, Metadata]:
+        """Get the fields of the current dataclass schema."""
+        return metadata_fields_from_dataclass(self._data)
+
+    def _resolve_attr_to_dict_key(self, attr_key: str) -> str:
+        """Resolve an attribute key to its dict key using aliasing."""
+        return self._fields_metadata.get(attr_key, {}).get("alias", attr_key)
+
+    def _resolve_dict_to_attr_key(self, dict_key: str) -> str:
+        """Resolve a dict key to its attribute key using aliasing."""
+        for attr_key, metadata in self._fields_metadata.items():
+            if metadata.get("alias") == dict_key:
+                return attr_key
+        return dict_key
+
+    def _to_dict(self) -> dict:
         """Convert the AccessProxy to a standard dictionary."""
-        merged = deepcopy(self._extra_data.to_dict())
-        data_dict = deepcopy(asdict_with_aliases(self._data))
-        result = merge_dicts(data_dict, merged)
+        extra = deepcopy(self._extra_data)
+        data = deepcopy(asdict_with_aliases(self._data))
+        result = merge_dicts(data, extra)
         return result
 
-    def __getattr__(self, name: str) -> Any:
-        """Get attribute from either the typed data or additional data."""
+    def __getattr__(self, attr_key: str) -> Any:
+        """Get field via attribute style access (non-aliased keys)."""
+        dict_key: str = self._resolve_attr_to_dict_key(attr_key)
         try:
-            ret = getattr(self._data, name)
-            # We need to wrap nested dataclasses as well
-            # Needed for accessing a mixed case, where we add an unknown property to
-            # a nested schema. In this case, we need the same extra level in _extra_data.
-            if is_dataclass(ret):
-                return AccessProxy(ret, getattr(self._extra_data, name))  # type: ignore[arg-type]
-            return getattr(self._data, name)
-        except AttributeError:
-            return getattr(self._extra_data, name)
-
-    def __setattr__(self, name: str, value: Any):
-        """Set attribute on either the typed data or additional data."""
-        if name.startswith("_"):
-            object.__setattr__(self, name, value)
-        else:
-            if hasattr(self._data, name):
-                setattr(self._data, name, value)
+            data = getattr(self._data, attr_key)
+            if is_dataclass_instance(data):
+                if dict_key not in self._extra_data:
+                    self._extra_data[dict_key] = dict()
+                return AccessProxy(
+                    data=data,
+                    extra_data=self._extra_data[dict_key],
+                    parent=self,
+                )
             else:
-                setattr(self._extra_data, name, value)
+                return data
+        except AttributeError:
+            return self._extra_data[dict_key]
 
-    def __getitem__(self, key: str) -> Any:
-        """Get item dynamically."""
-        # We need a bit of extra work here for alias resolution
-        aliases = _aliases_map(self._data)
-        if key in aliases.keys() or hasattr(self._data, key):
-            return _get_attr_resolve_alias(self._data, key)
+    def __setattr__(self, attr_key: str, value: Any):
+        """Set field via attribute style access (non-aliased keys)."""
+        if attr_key.startswith("_"):
+            object.__setattr__(self, attr_key, value)
         else:
-            return getattr(self._extra_data, key)
+            if hasattr(self._data, attr_key):
+                setattr(self._data, attr_key, value)
+            else:
+                dict_key = self._resolve_attr_to_dict_key(attr_key)
+                self._extra_data[dict_key] = value
 
-    def __setitem__(self, key: str, value: Any) -> None:
-        """Set item dynamically."""
-        # We need a bit of extra work here for alias resolution
-        aliases = _aliases_map(self._data)
-        if key in aliases.keys() or hasattr(self._data, key):
-            _set_attr_resolve_alias(self._data, key, value)
+    def __getitem__(self, dict_key: str) -> Any:
+        """Get field via dict style acces (alias)."""
+        attr_key = self._resolve_dict_to_attr_key(dict_key)
+        if hasattr(self._data, attr_key):
+            return self.__getattr__(attr_key)
         else:
-            setattr(self._extra_data, key, value)
+            return self._extra_data[dict_key]
+
+    def __setitem__(self, dict_key: str, value: Any) -> None:
+        """Set field via dict style access (alias)."""
+        attr_key = self._resolve_dict_to_attr_key(dict_key)
+        if hasattr(self._data, attr_key):
+            self.__setattr__(attr_key, value)
+        else:
+            self._extra_data[dict_key] = value
 
 
 class ConfigExtra(Config[D]):
@@ -182,7 +132,8 @@ class ConfigExtra(Config[D]):
     are merged into the schema data when accessing via the `data` property.
     """
 
-    _extra_data: AttributeDict
+    _extra_data: dict[str, Any]
+    _access_proxy: AccessProxy[D]
 
     def __init__(
         self,
@@ -217,21 +168,42 @@ class ConfigExtra(Config[D]):
         # Will raise ConfigurationError if the data does not comply with the schema
         validate(data, self._json_schema)
 
-        self._extra_data = AttributeDict()
+        self._extra_data = dict()
 
         if is_dataclass(data):
             self._data = cast(D, data)
         else:
-            self._data = None  # type: ignore
-            self.update(data)
+            self._data = dataclass_from_dict(self._schema, data)
+
+        self._access_proxy = AccessProxy(
+            data=self._data,
+            extra_data=self._extra_data,
+        )
+
+    def reset(self):
+        """Reset the configuration data to the default values."""
+        super().reset()
+        self._access_proxy = AccessProxy(
+            data=self._data,
+            extra_data=self._extra_data,
+        )
 
     @property
-    def data(self) -> AccessProxy[D]:  # type: ignore
+    def data(self) -> D:
         """Get the configuration data wrapped in a dynamic accessor.
 
         Care: Instance checks will not work as expected on this property.
+
+        We have two non-ideal choices for the type hint here:
+        - if we use D, we will get a wrong type_error for e.g. `config.data.my_field.to_dict()`
+        - if we use AccessProxy[D], we wont get the nice type_checking against the schema.
         """
-        return AccessProxy(self._data, self._extra_data)
+        return self._access_proxy  # type: ignore
+
+    @property
+    def proxy(self) -> AccessProxy[D]:
+        """Convenience Property for setting non-schema fields."""
+        return self._access_proxy
 
     @property
     def schema_data(self) -> D:
@@ -239,26 +211,37 @@ class ConfigExtra(Config[D]):
         return self._data
 
     @property
-    def extra_data(self) -> AttributeDict:
-        """Get the extra data as an AttributeDict."""
+    def extra_data(self) -> dict:
+        """Get the extra data as a dict."""
         return self._extra_data
 
     def to_dict(self, extra_fields: bool = True) -> dict:
         """Get the full configuration data as a dictionary, including extra fields."""
-        data = asdict_with_aliases(self._data)
+        data = asdict_with_aliases(self.proxy._data)
         if extra_fields:
-            data = merge_dicts(data, self.extra_data.to_dict())
+            data = merge_dicts(data, self.proxy._extra_data)
         return data
 
     def _update_additional(
-        self, target, key, value: Any, _current_path: list[str]
+        self,
+        value: Any,
+        path: list[tuple[DataclassInstance, str]],
     ) -> None:
-        """Handle updating additional (non-schema) fields used in `super.update`."""
-        extra_data: AttributeDict = self._extra_data
-        for path_part in _current_path:
-            extra_data = getattr(extra_data, path_part)
+        """Handle updating additional (non-schema) fields used in `super.update`.
 
-        if isinstance(value, dict):
-            setattr(extra_data, key, AttributeDict(**value))
-        else:
-            setattr(extra_data, key, value)
+        Here, we update extra_data, which is a dict. So we use dict style.
+        """
+        dict_key_path = []
+        for target, attr_key in path:
+            # resolve attr_key to dict_key using aliasing
+            field_metadata = metadata_fields_from_dataclass(target)
+            dict_key = field_metadata.get(attr_key, {}).get("alias", attr_key)
+            dict_key_path.append(dict_key)
+
+        extra_data: dict[str, Any] = self._extra_data
+        for dict_key in dict_key_path[:-1]:
+            if dict_key not in extra_data.keys():
+                extra_data[dict_key] = dict()
+            extra_data = extra_data[dict_key]
+
+        extra_data[dict_key_path[-1]] = value

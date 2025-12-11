@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from copy import deepcopy
-from dataclasses import asdict, fields, is_dataclass
+from dataclasses import asdict, is_dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -19,8 +19,12 @@ from typing import (
 
 from eyconf.asdict import asdict_with_aliases
 from eyconf.generate_yaml import dataclass_to_yaml
-from eyconf.type_utils import get_type_hints_resolve_namespace, is_dataclass_type
-from eyconf.utils import dataclass_from_dict
+from eyconf.type_utils import (
+    get_type_hints_resolve_namespace,
+    is_dataclass_instance,
+    is_dataclass_type,
+)
+from eyconf.utils import dataclass_from_dict, dict_items_resolve_aliases
 from eyconf.validation import to_json_schema, validate, validate_json
 
 if TYPE_CHECKING:
@@ -78,7 +82,7 @@ class Config(Generic[D]):
         """Validate the current data against the schema."""
         validate(self._data, self._json_schema)
 
-    def update(self, data: dict):
+    def update(self, data: dict[str, Any]):
         """Update the configuration with provided data.
 
         This applies an partial update to the existing configuration data.
@@ -88,36 +92,40 @@ class Config(Generic[D]):
         def _update(
             target_type: type[DataclassInstance],
             target: DataclassInstance,
-            update_data: dict,
-            _current_path: list[str] = [],
+            update_data: dict[str, Any],
+            path: list[tuple[DataclassInstance, str]] | None = None,
         ):
+            """Recursive update helper function.
+
+            Parameters
+            ----------
+            target_type : type[DataclassInstance]
+                The dataclass type of the target instance.
+            target : DataclassInstance
+                The dataclass instance to update.
+            update_data : dict
+                The update data to apply.
+            path : list[tuple[DataclassInstance, str]] | None
+                The current path in the dataclass tree (root-to-leaf).
+                [0] is parent instance,
+                [1] is attr key used to access the target from from its parent. E.g.
+                [(root_instance, "child_field"), (child_instance, "grandchild_field")]
+            """
             target_annotations = get_type_hints_resolve_namespace(target_type)
 
-            # Rewrite key, from alias to field name
-            alias_fields = {
-                f.metadata["alias"]: f
-                for f in fields(target_type)
-                if "alias" in f.metadata
-            }
-
-            for key, value in update_data.items():
-                # resolve if key has an alias
-                if alias_field := alias_fields.get(key):
-                    key = alias_field.name
-
+            for key, value in dict_items_resolve_aliases(update_data, target_type):
                 if hasattr(target, key):
-                    # folders : dict[str, InboxFolder]
                     current_value = getattr(target, key)
-                    # current_value = {placeholder:Config42()}
 
                     # Handle dataclass fields
-                    if is_dataclass(current_value):
+                    if is_dataclass_instance(current_value):
                         _update(
                             target_annotations[key],
-                            current_value,  # type: ignore[arg-type]
+                            current_value,
                             value,
-                            _current_path + [key],
+                            path=(path or []) + [(target, key)],
                         )
+
                     # Handle Optional fields that were previously None
                     elif current_value is None and isinstance(value, dict):
                         nested_instance = dataclass_from_dict(
@@ -141,30 +149,35 @@ class Config(Generic[D]):
                 else:
                     # Non-schema fields
                     self._update_additional(
-                        target, key, value, _current_path=_current_path
+                        value,
+                        path=(path or []) + [(target, key)],
                     )
 
         old_data = deepcopy(self._data)
-        update_dict = data if not is_dataclass(data) else asdict(data)
-
-        _update(self._schema, self._data, update_dict)
+        _update(self._schema, self._data, data)
 
         try:
             self.validate()
-        except Exception as e:
+        except Exception:
             self._data = old_data
-            raise e from e
+            raise
 
     def _update_additional(
-        self, target, key, value: Any, _current_path: list[str]
+        self,
+        value: Any,
+        path: list[tuple[DataclassInstance, str]],
     ) -> None:
         """Handle updating additional (non-schema) fields.
 
         Can be overwritten in subclasses.
         """
+        target, attr_key = path[-1]
+        root_name = type(path[0][0]).__name__
+        path_str = f"{root_name}" + "".join(f".{attr}" for _, attr in path)
         raise AttributeError(
-            "Cannot set unknown attribute"
-            f" '{'.'.join(_current_path + [key])}' on configuration."
+            f"Cannot set non-schema field '{attr_key}' "
+            f"on dataclass '{type(target).__name__}'!"
+            f"\n(at {path_str})"
         )
 
     def overwrite(self, data: dict | D):

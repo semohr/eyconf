@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import fields, is_dataclass
+from collections.abc import Iterable
+from dataclasses import Field, fields, is_dataclass
 from types import NoneType, UnionType
 from typing import (
     TYPE_CHECKING,
     Any,
+    TypedDict,
     TypeVar,
     get_args,
     get_origin,
@@ -18,18 +20,28 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 D = TypeVar("D", bound="DataclassInstance")
+T = TypeVar("T")
 
 
 def merge_dicts(a: dict, b: dict, path=[]):
     """Merge dict b into dict a, raising an exception on conflicts."""
     for key in b:
+        val_b = b[key]
         if key in a:
             if isinstance(a[key], dict) and isinstance(b[key], dict):
                 merge_dicts(a[key], b[key], path + [str(key)])
-            elif a[key] != b[key]:
-                raise Exception("Conflict at " + ".".join(path + [str(key)]))
+            val_a = a[key]
+            if isinstance(val_a, dict) and isinstance(val_b, dict):
+                merge_dicts(val_a, val_b, path + [str(key)])
+            elif val_a != val_b:
+                raise Exception(
+                    "Conflict at "
+                    + ".".join(path + [str(key)])
+                    + f": {val_a} != {val_b}"
+                )
         else:
-            a[key] = b[key]
+            a[key] = val_b
+
     return a
 
 
@@ -119,3 +131,46 @@ def _dataclass_from_dict_inner(target_type: type, data: Any) -> Any:
 
     # Handle primitive types
     return data
+
+
+class Metadata(TypedDict, total=False):
+    """Metadata for a dataclass field.
+
+    This defines all metadata keys we use in eyconf for
+    config schema fields.
+    """
+
+    alias: str
+    """Alias for the field when used in dict representations."""
+
+
+def get_metadata(
+    type: type | DataclassInstance,
+) -> Iterable[tuple[Field[Any], Metadata]]:
+    """Extract metadata from dataclass fields."""
+    dataclass_fields = fields(type) if is_dataclass(type) else {}
+    return ((f, Metadata(**f.metadata)) for f in dataclass_fields if f.metadata)
+
+
+def metadata_fields_from_dataclass(
+    type: type | DataclassInstance,
+) -> dict[str, Metadata]:
+    """Extract metadata from dataclass fields."""
+    return {f.name: m for f, m in get_metadata(type)}
+
+
+def dict_items_resolve_aliases(
+    data: dict[str, T],
+    type: type | DataclassInstance,
+) -> Iterable[tuple[str, T]]:
+    """`dict.items()` but resolves alias names.
+
+    Allows to iter a dictionary using the attribute style
+    access keys.
+
+    This resolve to attribute style keys (alias->non-alias).
+    """
+    dict_key_to_attr_key = {
+        m["alias"]: f.name for f, m in get_metadata(type) if "alias" in m
+    }
+    return ((dict_key_to_attr_key.get(key, key), value) for key, value in data.items())

@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from dataclasses import fields, is_dataclass
+from dataclasses import is_dataclass
 from functools import cache
 from types import NoneType, UnionType
 from typing import Annotated, Any, ClassVar, Literal, Union, get_args, get_origin
@@ -13,6 +13,7 @@ from typing_extensions import NotRequired
 from eyconf.constants import primitive_type_mapping
 from eyconf.decorators import check_allows_additional
 from eyconf.type_utils import get_type_hints_resolve_namespace
+from eyconf.utils import metadata_fields_from_dataclass
 
 SchemaType = dict[str, Any] | dict[str, str] | dict[Any, Any]
 
@@ -57,14 +58,11 @@ def to_json_schema(
 
     # Get type hints for the TypedDict
     type_hints = get_type_hints_resolve_namespace(type, include_extras=True)
-    dataclass_fields = fields(type) if is_dataclass(type) else {}
-    alias_fields = {f.name: f for f in dataclass_fields if "alias" in f.metadata}
-
+    fieldname_to_metadata = metadata_fields_from_dataclass(type)
     # Add the type hints to the schema
     for field_name, field_type in type_hints.items():
-        # Resolve alias
-        if alias_field := alias_fields.get(field_name):
-            field_name = alias_field.metadata["alias"]
+        if alias := fieldname_to_metadata.get(field_name, {}).get("alias"):
+            field_name = alias
 
         origin = get_origin(field_type)
         if origin is ClassVar:
@@ -74,6 +72,7 @@ def to_json_schema(
         p, r = __convert_type_to_schema(field_type, allow_additional=allow_additional)
         schema["properties"][field_name] = p
 
+        # Handle required fields
         if r:
             schema["required"].append(field_name)
 

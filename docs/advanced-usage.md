@@ -171,7 +171,7 @@ from dataclasses import dataclass
 from typing import Annotated
 
 @dataclass
-class Config:
+class ConfigSchema:
     """This is a config docstring."""
     host: Annotated[str, "The host of the server"] = "localhost"
     port: Annotated[int, "The port of the server"] = 8080
@@ -204,10 +204,10 @@ from eyconf.decorators import allow_additional
 
 @allow_additional
 @dataclass
-class Config:
+class ConfigSchema:
     known_field: int = 42
 
-config = EyConf(schema=Config)
+config = EyConf(schema=ConfigSchema)
 ```
 
 We can now edit the config yaml file to include additional fields:
@@ -236,10 +236,10 @@ from dataclasses import dataclass
 from eyconf.config import ConfigExtra
 
 @dataclass
-class Config:
+class ConfigSchema:
     known_field: int = 42
 
-config = ConfigExtra(Config())
+config = ConfigExtra(ConfigSchema())
 config.data.extra_field = 43
 config.data["extra_field_2"] = 44 # also enables dict style access
 
