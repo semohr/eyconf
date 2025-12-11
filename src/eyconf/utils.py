@@ -170,7 +170,7 @@ def dict_items_resolve_aliases(
 
     This resolve to attribute style keys (alias->non-alias).
     """
-    alias_to_fields = {
+    dict_key_to_attr_key = {
         m["alias"]: f.name for f, m in get_metadata(type) if "alias" in m
     }
-    return ((alias_to_fields.get(key, key), value) for key, value in data.items())
+    return ((dict_key_to_attr_key.get(key, key), value) for key, value in data.items())

@@ -138,7 +138,7 @@ class TestUpdate:
 
 class TestToDict:
     """Tests for the to_dict method.
-    This should resolve AccessProxy and AttributeDict instances correctly.
+    This should resolve AccessProxy instances correctly.
     """
 
     def test_to_dict_no_extra(self, conf42: ConfigExtra[Config42]):
