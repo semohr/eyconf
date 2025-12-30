@@ -78,12 +78,6 @@ class AccessProxy(Generic[D]):
 
     def __getattr__(self, attr_key: str) -> Any:
         """Get field via attribute style access (non-aliased keys)."""
-        # to handle __deepcopy__ this needs to raise an AttributeError not a KeyError
-        if attr_key.startswith("__") and attr_key.endswith("__"):
-            raise AttributeError(
-                f"'{type(self).__name__}' object has no attribute '{attr_key}'"
-            )
-
         dict_key: str = self._resolve_attr_to_dict_key(attr_key)
         try:
             data = getattr(self._data, attr_key)
@@ -127,6 +121,14 @@ class AccessProxy(Generic[D]):
         else:
             self._extra_data[dict_key] = value
 
+    def __deepcopy__(self, memo):
+        """Implement deepcopy to avoid issues with nested dataclasses."""
+        new_proxy = type(self)(
+            data=deepcopy(self._data, memo),
+            extra_data=deepcopy(self._extra_data, memo),
+            parent=self._parent,
+        )
+        return new_proxy
 
 class ConfigExtra(Config[D]):
     """Configuration class that supports extra fields explicitly.
