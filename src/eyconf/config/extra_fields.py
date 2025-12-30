@@ -78,6 +78,12 @@ class AccessProxy(Generic[D]):
 
     def __getattr__(self, attr_key: str) -> Any:
         """Get field via attribute style access (non-aliased keys)."""
+        # to handle __deepcopy__ this needs to raise an AttributeError not a KeyError
+        if attr_key.startswith("__") and attr_key.endswith("__"):
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{attr_key}'"
+            )
+
         dict_key: str = self._resolve_attr_to_dict_key(attr_key)
         try:
             data = getattr(self._data, attr_key)
