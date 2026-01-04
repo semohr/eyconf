@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any
 import pytest
@@ -193,6 +194,29 @@ class TestAccessProxy:
         assert proxy.nested.level == 42
         assert proxy._extra_data.nested.level == 42
 
+    def test_attribute_assignment_other_ap(self, proxy):
+        """
+        Access Proxies should never hold other Access Proxies, this can only happen
+        if we (accidentally) set a custom field manually.
+        """
+        proxy.nested = AccessProxy(
+            Config42(),
+            {"lorem": "ipsum"},
+        )
+
+        assert not isinstance(proxy.nested, AccessProxy)
+
+        unpacked = proxy._to_dict()
+        assert unpacked == {
+            "int_field": 42,
+            "str_field": "FortyTwo!",
+            "nested": {
+                "int_field": 42,
+                "str_field": "FortyTwo!",
+                "lorem": "ipsum",
+            }
+        }
+
     def test_item_assignment(self, proxy):
         proxy["int_field"] = 100
         proxy["new_field"] = "baz"
@@ -223,6 +247,51 @@ class TestAccessProxy:
             "foo": "bar",
         }
         assert result == expected
+
+    def test_to_dict_nested(self):
+        @dataclass
+        class NestedConfig:
+            nested_42: Config42
+
+        config_data = NestedConfig(nested_42=Config42())
+        extra_data: dict[str, Any] = dict()
+        proxy = AccessProxy(
+            config_data,
+            extra_data,
+        )
+
+        result = proxy._to_dict()
+        expected = {
+            "nested_42": {
+                "int_field": 42,
+                "str_field": "FortyTwo!",
+            }
+        }
+        assert result == expected
+
+    def test_deepcopy_equality(self):
+        config_data = Config42()
+        extra_data: dict[str, Any] = dict()
+        proxy = AccessProxy(
+            config_data,
+            extra_data,
+        )
+
+        proxy_2 = deepcopy(proxy)
+        assert proxy_2 == proxy
+        assert proxy_2._to_dict() == proxy._to_dict()
+
+    def test_hash(self):
+        config_data = Config42()
+        extra_data: dict[str, Any] = dict(list_for_hash=[1,2,3])
+        proxy = AccessProxy(
+            config_data,
+            extra_data,
+        )
+
+        proxy_2 = deepcopy(proxy)
+        assert hash(proxy_2) == hash(proxy)
+
 
 
 class TestReset:

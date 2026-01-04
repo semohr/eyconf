@@ -36,7 +36,7 @@ log = logging.getLogger(__name__)
 class AccessProxy(Generic[D]):
     """Proxy to access attributes dynamically."""
 
-    _data: D
+    _data: D  # this should never be an access proxy!
     _extra_data: dict
 
     # this proxies' location in the overall config tree
@@ -96,6 +96,9 @@ class AccessProxy(Generic[D]):
 
     def __setattr__(self, attr_key: str, value: Any):
         """Set field via attribute style access (non-aliased keys)."""
+        if isinstance(value, AccessProxy):
+            value = value._to_dict()
+
         if attr_key.startswith("_"):
             object.__setattr__(self, attr_key, value)
         else:
@@ -129,6 +132,25 @@ class AccessProxy(Generic[D]):
             parent=self._parent,
         )
         return new_proxy
+
+    def __hash__(self) -> int:
+        """Make Access Proxy hashable by recursively hashing its internal data."""
+        def make_hashable(obj):
+            if isinstance(obj, dict):
+                return tuple(sorted((k, make_hashable(v)) for k, v in obj.items()))
+            elif isinstance(obj, list):
+                return tuple(make_hashable(item) for item in obj)
+            else:
+                return obj
+
+        return hash(make_hashable(self._to_dict()))
+
+    def __eq__(self, value: object, /) -> bool:
+        """Compare Access Proxies via their data."""
+        if isinstance(value, AccessProxy):
+            value = value._to_dict()
+        return self._to_dict() == value
+
 
 class ConfigExtra(Config[D]):
     """Configuration class that supports extra fields explicitly.
