@@ -14,6 +14,7 @@ app.subcommand(config_cli, name="config")
 
 import asyncio
 import os
+from typing import Annotated
 
 import typer
 
@@ -61,9 +62,19 @@ def create_config_cli(
             print(ctx.get_help())
 
     @config_cli.command()
-    def ls():
+    def ls(
+        comments: Annotated[
+            bool,
+            typer.Option(help="Show the comments in returned configuration file."),
+        ] = False,
+    ):
         """Show the current configuration."""
+        path = Config.get_file()
         config = Config(*args, **kwargs)
+        if comments:
+            with open(path) as file:
+                config = file.read()
+
         typer.echo(str(config))
 
     @config_cli.command()
