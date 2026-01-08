@@ -16,7 +16,7 @@ import asyncio
 import difflib
 import os
 from contextlib import contextmanager
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 from rich import print
@@ -76,7 +76,7 @@ def create_config_cli(
     ):
         """Show the current configuration."""
         path = Config.get_file()
-        config = Config(*args, **kwargs)
+        config: EYConf[Any] | str = Config(*args, **kwargs)
         if comments:
             with open(path) as file:
                 config = file.read()

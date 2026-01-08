@@ -93,7 +93,7 @@ class TestCommands:
         result = runner.invoke(cli_app)
 
         assert result.exit_code == 0
-        assert "--help" in result.output
+        assert "Manage configuration file" in result.output
 
     def test_validate(self, cli_app):
         runner = CliRunner()
