@@ -67,9 +67,15 @@ def create_config_cli(
         typer.echo(str(config))
 
     @config_cli.command()
+    def path():
+        """Show the path to the configuration file."""
+        typer.echo(Config.get_file().absolute())
+
+    @config_cli.command()
     def edit():
         """Edit the configuration file in you default editor."""
         asyncio.run(edit_config(Config, *args, **kwargs))
+
     return config_cli
 
 
