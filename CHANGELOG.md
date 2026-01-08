@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.1]
+
+* Access Proxies now support assignment of other acess proxies, comparison, and deepcopy.
+
 ## [0.5.0]
 
 * Dropped AttributeDict for a plain dict object for extra keys
@@ -18,8 +22,8 @@ All notable changes to this project will be documented in this file.
 
 ## [0.4.0]
 
-* Added proper support for adding additional properties to configuration schemas via the `ConfigExtra` class. This allows users to include extra fields in their configuration that are not explicitly defined in the dataclass schema. All partial support for 
-allow additional in the base config has been removed in favor of this new approach. This 
+* Added proper support for adding additional properties to configuration schemas via the `ConfigExtra` class. This allows users to include extra fields in their configuration that are not explicitly defined in the dataclass schema. All partial support for
+allow additional in the base config has been removed in favor of this new approach. This
 unifies the way extra fields are handled across the library.
 * Added `allow_additional` and `dict_access` decorators to simplify enabling extra fields and dict-style access for configuration schemas.
 * Updated documentation to reflect changes in handling extra fields and added examples for using `ConfigExtra`.
