@@ -120,3 +120,26 @@ class TestCommands:
         result = runner.invoke(cli_app, ["validate"])
         assert result.exit_code == 1
         assert "Additional properties are not allowed" in result.output
+
+    def test_diff(self, cli_app):
+        """Test the 'diff' command to show differences between current and default config."""
+        runner = CliRunner()
+        result = runner.invoke(cli_app, ["diff"])
+
+        assert result.exit_code == 0
+        # Should show "No changes!" when configs are identical
+        assert "No changes!" in result.output
+
+    def test_diff_with_changes(self, cli_app, mock_get_file_path):
+        """Test the 'diff' command with actual configuration changes."""
+        runner = CliRunner()
+
+        # Modify config file to have different values
+        with open(mock_get_file_path, "w") as f:
+            f.write("int_field: 100\nstr_field: 'Custom Value'\n")
+
+        result = runner.invoke(cli_app, ["diff"])
+
+        assert result.exit_code == 0
+        # Should show differences between default and current values
+        assert "+" in result.output or "-" in result.output
