@@ -103,7 +103,7 @@ def create_config_cli(
 
     @config_cli.command()
     def diff():
-        """Show differences between current configuration and default values."""
+        """Show differences between current default config values."""
         with human_readable_validation():
             from eyconf.generate_yaml import dataclass_to_yaml
 
@@ -145,6 +145,29 @@ def create_config_cli(
 
             if lines == 0:
                 typer.echo("No changes!")
+
+    @config_cli.command()
+    def reset(
+        force: Annotated[
+            bool,
+            typer.Option(help="Force reset without confirmation."),
+        ] = False,
+    ):
+        """Reset configuration to default values."""
+        # TODO: Support to reset of specific sections
+        if not force:
+            if not typer.confirm(
+                "Are you sure you want to reset the entire configuration?"
+            ):
+                typer.echo("Aborted!")
+                raise typer.Exit(0)
+
+        # Remove file incase of invalid schema/parsing errors
+        path = Config.get_file()
+        if path.exists():
+            os.remove(path)
+        Config(*args, **kwargs)
+        typer.echo("Configuration has been reset to default values.")
 
     return config_cli
 

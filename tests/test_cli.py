@@ -143,3 +143,28 @@ class TestCommands:
         assert result.exit_code == 0
         # Should show differences between default and current values
         assert "+" in result.output or "-" in result.output
+
+    def test_reset(self, cli_app):
+        """Test the 'reset' command to reset configuration to defaults."""
+        runner = CliRunner()
+        result = runner.invoke(
+            cli_app,
+            [
+                "reset",
+            ],
+            input="y\n",
+        )
+
+        assert result.exit_code == 0
+        assert "Configuration has been reset to default values." in result.output
+
+        # Exit if no confirm
+        result = runner.invoke(
+            cli_app,
+            [
+                "reset",
+            ],
+            input="N\n",
+        )
+        assert result.exit_code == 0
+        assert "Aborted!" in result.output
