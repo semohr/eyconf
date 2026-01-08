@@ -17,8 +17,10 @@ import os
 from typing import Annotated
 
 import typer
+from yaml import YAMLError
 
 from eyconf import EYConf
+from eyconf.validation import MultiConfigurationError
 
 
 def create_config_cli(
@@ -86,6 +88,22 @@ def create_config_cli(
     def edit():
         """Edit the configuration file in you default editor."""
         asyncio.run(edit_config(Config, *args, **kwargs))
+
+    @config_cli.command()
+    def validate():
+        """Validate the configuration file against the schema."""
+        try:
+            Config(*args, **kwargs)
+        except MultiConfigurationError as e:
+            for error in e.errors:
+                typer.echo(f"- {error}")
+            raise typer.Exit(1)
+        except YAMLError as e:
+            typer.echo("Invalid YAML file!")
+            typer.echo(e.__class__.__name__)
+            raise typer.Exit(1)
+
+        typer.echo("Configuration is valid.")
 
     return config_cli
 

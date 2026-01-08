@@ -94,3 +94,29 @@ class TestCommands:
 
         assert result.exit_code == 0
         assert "--help" in result.output
+
+    def test_validate(self, cli_app):
+        runner = CliRunner()
+        result = runner.invoke(cli_app, ["validate"])
+        assert result.exit_code == 0
+        assert "Configuration is valid." in result.output
+
+    def test_validate_invalid(self, cli_app, mock_get_file_path):
+        runner = CliRunner()
+
+        with open(mock_get_file_path, "a") as f:
+            f.write("invalid value")
+
+        result = runner.invoke(cli_app, ["validate"])
+        assert result.exit_code == 1
+        assert "Invalid YAML file!" in result.output
+
+    def test_validate_invalid_schema(self, cli_app, mock_get_file_path):
+        runner = CliRunner()
+
+        with open(mock_get_file_path, "a+") as f:
+            f.write("foo : 'bar'")
+
+        result = runner.invoke(cli_app, ["validate"])
+        assert result.exit_code == 1
+        assert "Additional properties are not allowed" in result.output
