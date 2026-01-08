@@ -55,17 +55,10 @@ def create_config_cli(
     @config_cli.callback(invoke_without_command=True)
     def main(
         ctx: typer.Context,
-        edit: bool = typer.Option(
-            False, "--edit", "-e", help="Edit the configuration."
-        ),
     ):
-        """Edit the plistsync configuration."""
-        if edit:
-            asyncio.run(edit_config(Config, *args, **kwargs))
-        else:
-            # Show help if no subcommand is provided
-            if ctx.invoked_subcommand is None:
-                print(ctx.get_help())
+        # Show help if no subcommand is provided
+        if ctx.invoked_subcommand is None:
+            print(ctx.get_help())
 
     @config_cli.command()
     def ls():
@@ -73,6 +66,10 @@ def create_config_cli(
         config = Config(*args, **kwargs)
         typer.echo(str(config))
 
+    @config_cli.command()
+    def edit():
+        """Edit the configuration file in you default editor."""
+        asyncio.run(edit_config(Config, *args, **kwargs))
     return config_cli
 
 
