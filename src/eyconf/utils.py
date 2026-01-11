@@ -46,12 +46,9 @@ def merge_dicts(
                 elif priority == "b":
                     # Use b's value, overwriting a's value
                     a[key] = val_b
-                elif priority == "raise":
-                    # Build error message only when needed
+                else:
                     full_path = ".".join(path_tuple + (str(key),))
                     raise Exception(f"Conflict at {full_path}: {val_a} != {val_b}")
-                else:
-                    raise ValueError(f"Invalid priority value: {priority}")
         else:
             a[key] = val_b
 

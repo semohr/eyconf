@@ -276,3 +276,15 @@ class TestMergeDicts:
         result = merge_dicts(a, b)
         assert a is result  # Should be the same object
         assert "new" in a  # Should have modified the original
+
+    def test_merge_with_priority_a(self):
+        a = {"key": "value1"}
+        b = {"key": "value2"}
+        result = merge_dicts(a, b, priority="a")
+        assert result == {"key": "value1"}
+
+    def test_merge_with_priority_b(self):
+        a = {"key": "value1"}
+        b = {"key": "value2"}
+        result = merge_dicts(a, b, priority="b")
+        assert result == {"key": "value2"}
