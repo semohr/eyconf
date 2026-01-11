@@ -47,6 +47,14 @@ cli = ["typer"]
 [tool.hatch.build.targets.wheel]
 packages = ["src/eyconf"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src/**/*.py",
+  "/tests",
+  "/src/eyconf/py.typed"
+]
+
+
 [tool.ruff]
 include = ["pyproject.toml", "src/**/*.py", "tests/**/*.py"]
 target-version = "py310"

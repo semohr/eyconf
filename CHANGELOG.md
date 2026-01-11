@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [0.5.2]
 
 * Enhanced the eyconf class to use schema-defined default values during validation, preventing errors when fields have defaults but aren't explicitly marked as optional.
+* Added py.typed marker to distribution
 
 ## [0.5.1]
 
