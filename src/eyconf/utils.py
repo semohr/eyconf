@@ -7,6 +7,7 @@ from types import NoneType, UnionType
 from typing import (
     TYPE_CHECKING,
     Any,
+    Literal,
     TypedDict,
     TypeVar,
     get_args,
@@ -23,22 +24,31 @@ D = TypeVar("D", bound="DataclassInstance")
 T = TypeVar("T")
 
 
-def merge_dicts(a: dict, b: dict, path=[]):
+def merge_dicts(
+    a: dict, b: dict, path=[], priority: Literal["raise", "a", "b"] = "raise"
+) -> dict:
     """Merge dict b into dict a, raising an exception on conflicts."""
+    # Convert path to tuple for faster concatenation
+    path_tuple = tuple(path)
+
     for key in b:
         val_b = b[key]
         if key in a:
-            if isinstance(a[key], dict) and isinstance(b[key], dict):
-                merge_dicts(a[key], b[key], path + [str(key)])
             val_a = a[key]
+            # Handle nested dictionaries recursively
             if isinstance(val_a, dict) and isinstance(val_b, dict):
-                merge_dicts(val_a, val_b, path + [str(key)])
+                merge_dicts(val_a, val_b, path_tuple + (str(key),), priority)
             elif val_a != val_b:
-                raise Exception(
-                    "Conflict at "
-                    + ".".join(path + [str(key)])
-                    + f": {val_a} != {val_b}"
-                )
+                # Handle conflicts based on priority
+                if priority == "a":
+                    # Keep a's value, ignore b's value
+                    continue
+                elif priority == "b":
+                    # Use b's value, overwriting a's value
+                    a[key] = val_b
+                else:
+                    full_path = ".".join(path_tuple + (str(key),))
+                    raise Exception(f"Conflict at {full_path}: {val_a} != {val_b}")
         else:
             a[key] = val_b
 

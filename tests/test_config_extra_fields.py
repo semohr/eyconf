@@ -214,7 +214,7 @@ class TestAccessProxy:
                 "int_field": 42,
                 "str_field": "FortyTwo!",
                 "lorem": "ipsum",
-            }
+            },
         }
 
     def test_item_assignment(self, proxy):
@@ -283,7 +283,7 @@ class TestAccessProxy:
 
     def test_hash(self):
         config_data = Config42()
-        extra_data: dict[str, Any] = dict(list_for_hash=[1,2,3])
+        extra_data: dict[str, Any] = dict(list_for_hash=[1, 2, 3])
         proxy = AccessProxy(
             config_data,
             extra_data,
@@ -291,7 +291,6 @@ class TestAccessProxy:
 
         proxy_2 = deepcopy(proxy)
         assert hash(proxy_2) == hash(proxy)
-
 
 
 class TestReset:

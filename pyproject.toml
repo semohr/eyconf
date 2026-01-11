@@ -4,7 +4,7 @@ authors = [
     { name = "F. Paul Spitzner", email = "github@makeitso.one" },
 ]
 name = "eyconf"
-version = "0.5.1"
+version = "0.5.2"
 description = "Easy Yaml based Configuration for Python"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -46,6 +46,14 @@ cli = ["typer"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/eyconf"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src/**/*.py",
+  "/tests",
+  "/src/eyconf/py.typed"
+]
+
 
 [tool.ruff]
 include = ["pyproject.toml", "src/**/*.py", "tests/**/*.py"]
