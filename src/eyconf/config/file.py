@@ -17,8 +17,10 @@ from typing import (
 
 import yaml
 
+from eyconf.asdict import asdict_with_aliases
 from eyconf.utils import (
     dataclass_from_dict,
+    merge_dicts,
 )
 from eyconf.validation import to_json_schema, validate_json
 
@@ -129,9 +131,11 @@ class EYConf(Config[D]):
                 f"Configuration file '{self.path.absolute()}' not found. Please generate with `write_default()`."
             )
 
-        # Load the config file
+        # We load the schema first to allow for sane default merging
+        # -> Load defaults, then merge with file contents
+        data: dict = asdict_with_aliases(self._schema())
         with open(self.path) as file:
-            data = yaml.safe_load(file)
+            data = merge_dicts(data, yaml.safe_load(file), priority="b")
 
         # Will raise ConfigurationError if the data does not comply with the schema
         validate_json(data, self._json_schema)

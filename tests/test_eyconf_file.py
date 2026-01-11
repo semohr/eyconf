@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 from pathlib import Path
 
@@ -18,7 +18,7 @@ def tmp_config_path(tmp_path) -> Path:
 @dataclass
 class Config42:
     int_field: int = 42
-    str_field: str = "FortyTwo!"
+    str_field: str = field(default="FortyTwo!")
 
 
 class TestEYConfFile:
@@ -98,3 +98,9 @@ class TestEYConfFile:
         assert "EYConf" in repr_str
         assert "int_field" in repr_str
         assert "str_field" in repr_str
+
+    def test_default_validate(self, tmp_config_path):
+        with open(tmp_config_path, "w") as f:
+            f.write("int_field: 5\n")  # omit str_field to use default
+        conf = EYConf(Config42)
+        conf._data.str_field = "FortyTwo!"
