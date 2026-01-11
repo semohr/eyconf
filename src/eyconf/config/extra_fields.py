@@ -135,6 +135,7 @@ class AccessProxy(Generic[D]):
 
     def __hash__(self) -> int:
         """Make Access Proxy hashable by recursively hashing its internal data."""
+
         def make_hashable(obj):
             if isinstance(obj, dict):
                 return tuple(sorted((k, make_hashable(v)) for k, v in obj.items()))
