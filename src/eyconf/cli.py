@@ -13,11 +13,18 @@ app.subcommand(config_cli, name="config")
 """
 
 import asyncio
+import difflib
 import os
+from contextlib import contextmanager
+from typing import Annotated, Any
 
 import typer
+from rich import print
+from rich.text import Text
+from yaml import YAMLError
 
 from eyconf import EYConf
+from eyconf.validation import MultiConfigurationError
 
 
 def create_config_cli(
@@ -55,23 +62,112 @@ def create_config_cli(
     @config_cli.callback(invoke_without_command=True)
     def main(
         ctx: typer.Context,
-        edit: bool = typer.Option(
-            False, "--edit", "-e", help="Edit the configuration."
-        ),
     ):
-        """Edit the plistsync configuration."""
-        if edit:
-            asyncio.run(edit_config(Config, *args, **kwargs))
-        else:
-            # Show help if no subcommand is provided
-            if ctx.invoked_subcommand is None:
-                print(ctx.get_help())
+        # Show help if no subcommand is provided
+        if ctx.invoked_subcommand is None:
+            print(ctx.get_help())
 
     @config_cli.command()
-    def ls():
+    def ls(
+        comments: Annotated[
+            bool,
+            typer.Option(help="Show the comments in returned configuration file."),
+        ] = False,
+    ):
         """Show the current configuration."""
-        config = Config(*args, **kwargs)
+        path = Config.get_file()
+        config: EYConf[Any] | str = Config(*args, **kwargs)
+        if comments:
+            with open(path) as file:
+                config = file.read()
+
         typer.echo(str(config))
+
+    @config_cli.command()
+    def path():
+        """Show the path to the configuration file."""
+        typer.echo(Config.get_file().absolute())
+
+    @config_cli.command()
+    def edit():
+        """Edit the configuration file in you default editor."""
+        asyncio.run(edit_config(Config, *args, **kwargs))
+
+    @config_cli.command()
+    def validate():
+        """Validate the configuration file against the schema."""
+        with human_readable_validation():
+            Config(*args, **kwargs)
+
+        typer.echo("Configuration is valid.")
+
+    @config_cli.command()
+    def diff():
+        """Show differences between current default config values."""
+        with human_readable_validation():
+            from eyconf.generate_yaml import dataclass_to_yaml
+
+            current_config = Config(*args, **kwargs)
+            default_yaml_str = dataclass_to_yaml(current_config._schema())
+            current_yaml_str = current_config.to_yaml()
+
+            current_lines = current_yaml_str.splitlines(keepends=True)
+            default_lines = default_yaml_str.splitlines(keepends=True)
+            # Strange formatting if last lines do not end in newline
+            if not default_yaml_str.endswith("\n"):
+                current_lines[-1] += "\n"
+            if not current_yaml_str.endswith("\n"):
+                default_lines[-1] += "\n"
+
+            diff_lines = difflib.unified_diff(
+                default_lines,
+                current_lines,
+                fromfile="default",
+                tofile="current",
+            )
+            lines = 0
+            for line in diff_lines:
+                text = Text(line)
+                if line.startswith("+") and not line.startswith("+++"):
+                    text.stylize("green")
+                elif line.startswith("-") and not line.startswith("---"):
+                    text.stylize("red")
+                elif line.startswith("@@"):
+                    text.stylize("bold cyan")
+                elif line.startswith("+++"):
+                    text.stylize("bold green")
+                elif line.startswith("---"):
+                    text.stylize("bold red")
+                else:
+                    text.stylize("gray")
+                print(text, end="")  #
+                lines += 1
+
+            if lines == 0:
+                typer.echo("No changes!")
+
+    @config_cli.command()
+    def reset(
+        force: Annotated[
+            bool,
+            typer.Option(help="Force reset without confirmation."),
+        ] = False,
+    ):
+        """Reset configuration to default values."""
+        # TODO: Support to reset of specific sections
+        if not force:
+            if not typer.confirm(
+                "Are you sure you want to reset the entire configuration?"
+            ):
+                typer.echo("Aborted!")
+                raise typer.Exit(0)
+
+        # Remove file incase of invalid schema/parsing errors
+        path = Config.get_file()
+        if path.exists():
+            os.remove(path)
+        Config(*args, **kwargs)
+        typer.echo("Configuration has been reset to default values.")
 
     return config_cli
 
@@ -103,3 +199,18 @@ async def edit_config(Config: type[EYConf], *args, **kwargs):
         typer.echo(f"Failed to open the configuration editor: {e}")
 
     await process.wait() if process else None
+
+
+@contextmanager
+def human_readable_validation():
+    """Show human readable exceptions instead of crashing."""
+    try:
+        yield
+    except MultiConfigurationError as e:
+        for error in e.errors:
+            typer.echo(f"- {error}")
+        raise typer.Exit(1)
+    except YAMLError as e:
+        typer.echo("Invalid YAML file!")
+        typer.echo(e.__class__.__name__)
+        raise typer.Exit(1)

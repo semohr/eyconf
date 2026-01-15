@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0]
+
+* Added new subcommands to the CLI integration:`path`, `validate`, `diff`, `reset`
+
 ## [0.5.2]
 
 * Enhanced the eyconf class to use schema-defined default values during validation, preventing errors when fields have defaults but aren't explicitly marked as optional.
