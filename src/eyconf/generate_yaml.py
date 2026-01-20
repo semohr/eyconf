@@ -159,30 +159,27 @@ def _dataclass_to_lines(
         include_extras=True,
     )
     all_fields = fields(schema)
+    is_instance = __is_dataclass_instance(schema)
 
-    # Handle dataclass instances
-    if __is_dataclass_instance(schema):
-        dict = schema.__dict__
-
-        for field, (key, value) in zip(all_fields, dict.items()):
-            dataclass_types[field.name]
-
-            lines += __field_to_lines(
-                field,
-                dataclass_types[field.name],
-                default_value=value,
-                indent=indent,
-            )
-
-        return lines
-
+    # Process each field
     for field in all_fields:
-        lines += __field_to_lines(field, dataclass_types[field.name], indent=indent)
+        field_type = dataclass_types[field.name]
+        default_value = _MISSING_SENTINEL
+
+        if is_instance:
+            # Get value from instance
+            default_value = getattr(schema, field.name, _MISSING_SENTINEL)
+
+        lines += __field_to_lines(
+            field,
+            field_type,
+            default_value=default_value,
+            indent=indent,
+        )
 
     return lines
 
 
-# Parse default
 _MISSING_SENTINEL = object()
 
 
