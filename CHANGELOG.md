@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.1]
+
+* Fixed issue where `generate_yaml` would not generate valid YAML when a dataclass with `None` union type was provided
+
 ## [0.6.0]
 
 * Added new subcommands to the CLI integration:`path`, `validate`, `diff`, `reset`

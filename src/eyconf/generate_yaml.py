@@ -152,13 +152,6 @@ def _dataclass_to_lines(
         lines += __split_docstring(schema.__doc__, indent=indent)
         lines.append(EmptyLine())
 
-    # Handle dataclass instances
-    if __is_dataclass_instance(schema):
-        dict = schema.__dict__
-        for key, value in dict.items():
-            lines.append(MapLine(name=key, default_value=value, indent=indent))
-        return lines
-
     # Handle dataclass types
     # by parsing type hint
     dataclass_types = get_type_hints_resolve_namespace(
@@ -166,14 +159,36 @@ def _dataclass_to_lines(
         include_extras=True,
     )
     all_fields = fields(schema)
+    is_instance = __is_dataclass_instance(schema)
 
+    # Process each field
     for field in all_fields:
-        lines += __field_to_lines(field, dataclass_types[field.name], indent=indent)
+        field_type = dataclass_types[field.name]
+        default_value = _MISSING_SENTINEL
+
+        if is_instance:
+            # Get value from instance
+            default_value = getattr(schema, field.name, _MISSING_SENTINEL)
+
+        lines += __field_to_lines(
+            field,
+            field_type,
+            default_value=default_value,
+            indent=indent,
+        )
 
     return lines
 
 
-def __field_to_lines(field: Field[Any], field_type: type, indent=0) -> list[Line]:
+_MISSING_SENTINEL = object()
+
+
+def __field_to_lines(
+    field: Field[Any],
+    field_type: type,
+    default_value: Any = _MISSING_SENTINEL,
+    indent=0,
+) -> list[Line]:
     """Parse a primitive field and return a list of lines.
 
     Parameters
@@ -204,13 +219,6 @@ def __field_to_lines(field: Field[Any], field_type: type, indent=0) -> list[Line
         for annotation in annotations:
             lines += __split_docstring(annotation, indent=indent)
 
-    if is_dataclass(field_type):
-        # Add section
-        lines.append(SectionLine(field.name, indent=indent))
-        lines += _dataclass_to_lines(field_type, indent=indent + 1)
-        lines.append(EmptyLine())
-        return lines
-
     # Check if field is optional
     is_optional = False
     if origin is UnionType:
@@ -218,32 +226,35 @@ def __field_to_lines(field: Field[Any], field_type: type, indent=0) -> list[Line
         args = tuple(
             arg for arg in args if arg is not type(None) and arg is not NoneType
         )
-
-    # Parse default
-    default_missing = True
-    default_value: Any = None
-    if isinstance(field.default, _MISSING_TYPE):
-        if isinstance(field.default_factory, _MISSING_TYPE):
-            default_missing = True
-        else:
+    if default_value is _MISSING_SENTINEL:
+        if not isinstance(field.default, _MISSING_TYPE):
+            default_value = field.default
+        elif not isinstance(field.default_factory, _MISSING_TYPE):
             default_value = field.default_factory()
-            default_missing = False
-    else:
-        default_value = field.default
-        default_missing = False
-
-    if origin in [dict, dict] and default_missing:
-        default_value = {}
-        default_missing = False
+        # Special cases default is missing but for usability
+        # we manually set it
+        # - dicts
+        # - dataclasses
+        elif origin in [dict]:
+            default_value = {}
+        elif is_dataclass(field_type):
+            default_value = field_type
 
     # No default value only allowed if the field is optional
-    if default_missing and not is_optional:
-        raise ValueError(
-            f"Field '{field.name}' has no default value! You may set one using direct assignment or a default factory."
-        )
+    if default_value is _MISSING_SENTINEL:
+        default_value = None
+        if not is_optional:
+            raise ValueError(
+                f"Field '{field.name}' has no default value! You may set one using direct assignment or a default factory."
+            )
 
-    # Default value: Lists/Sequences
-    if isinstance(default_value, list):
+    if is_dataclass(default_value):
+        # Default value: Datclasses
+        lines.append(SectionLine(field.name, indent=indent))
+        lines += _dataclass_to_lines(default_value, indent=indent + 1)
+        lines.append(EmptyLine())
+    elif isinstance(default_value, list):
+        # Default value: Lists/Sequences
         if len(default_value) == 0:
             default_value = None
         else:
@@ -267,17 +278,13 @@ def __field_to_lines(field: Field[Any], field_type: type, indent=0) -> list[Line
                 raise NotImplementedError(
                     f"Field type {field.type} {args} {origin} is not supported."
                 )
-
-            return lines
-
-    # Default value: dicts
-    if isinstance(default_value, dict):
+    elif isinstance(default_value, dict):
+        # Default value: dicts
         if len(default_value) == 0:
             """
             Stuff: {}
             """
             lines.append(MapLine(name=field.name, default_value=r"{}", indent=indent))
-            return lines
         else:
             """
             Stuff:
@@ -304,19 +311,18 @@ def __field_to_lines(field: Field[Any], field_type: type, indent=0) -> list[Line
                     f"Field type {field.type} {args} {origin} is not supported."
                 )
 
-            return lines
-
-    # Might not type check but it is a good enough heuristic
-    # if default_value is set wrongly there are more issues anyways
-    if __is_primitive_instance(default_value) or is_optional:
+    elif __is_primitive_instance(default_value) or is_optional:
+        # Might not type check but it is a good enough heuristic
+        # if default_value is set wrongly there are more issues anyways
         lines.append(
             MapLine(name=field.name, default_value=default_value, indent=indent)
         )
-        return lines
+    else:
+        raise NotImplementedError(
+            f"Field type {field.type} {args} {origin} is not supported."
+        )
 
-    raise NotImplementedError(
-        f"Field type {field.type} {args} {origin} is not supported."
-    )
+    return lines
 
 
 def __split_docstring(docstring: str, l=80, indent=0) -> list[Line]:

@@ -130,6 +130,7 @@ class TestGenerateDefault:
         class Lists:
             int_list: list[int] | None
             str_list: list[str] = field(default_factory=lambda: ["a", "b", "c"])
+            str_list_2: list[str] = field(default_factory=lambda: [])
 
         yaml_str = dataclass_to_yaml(Lists)
         print(yaml_str)
@@ -276,6 +277,26 @@ class TestGenerateDefault:
         print(yaml_str)
         assert True
 
+    def test_optional_nested(self):
+        @dataclass
+        class Nested:
+            foo: str = "bar"
+
+        @dataclass
+        class Schema:
+            nested: Nested | None = field(default_factory=Nested)
+
+        yaml_str = dataclass_to_yaml(Schema)
+        assert yaml_str == "nested:\n  foo: bar\n"
+
+    def test_no_default(self):
+        @dataclass
+        class SchemaStrict:
+            foo: str
+
+        with pytest.raises(ValueError, match="has no default value!"):
+            dataclass_to_yaml(SchemaStrict)
+
 
 class TestDocstringGeneration:
     """Test generation of docstrings from dataclass fields."""
@@ -379,5 +400,6 @@ class TestDocstringGeneration:
             "  # Test\n"
             "  multi: 42\n"
         )
+        print(yaml_str)
         assert yaml_str == expected_yaml
         assert yaml.safe_load(yaml_str) == {"inner": {"single": 42, "multi": 42}}
