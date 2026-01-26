@@ -6,25 +6,38 @@ Thank you for your interest in contributing to our project! Please follow these 
 
 - Python 3.10 or higher
 - Git
+- [uv](https://docs.astral.sh/uv/) (recommended) or pip
 
 ## Setting Up the Development Environment
 
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/semohr/eyconf.git
    cd eyconf
    ```
-2. **Install the dependencies:**
-    We recommend using a virtual environment to manage the dependencies.
+
+2. **Install the dependencies with uv:**
+
    ```bash
+   # Install with development dependencies
+   uv sync --all-extras
+
+   # Or if you prefer pip:
    pip install -e .[dev]
    ```
 
+3. **Activate environemnt (if uv):**
+
+   ```bash
+   source .venv/env/activate
+   ```
+
 ## Install pre-commit hooks
+
 We automatically check for code style and formatting issues using pre-commit hooks. To install the hooks, run the following command:
 
 ```bash
-pip install pre-commit
 pre-commit install
 ```
 
@@ -43,14 +56,9 @@ pyrefly check
 
 ## Docs
 
-To build the documentation, you need to have `sphinx` and `myst-parser` installed. You can install them using:
+To build the documentation locally, run:
 
 ```bash
-pip install -e .[docs]
-```
-
-To build the documentation, run:
-
-```bash
+cd docs
 make html
 ```
