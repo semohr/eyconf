@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
       - name: Install dependencies
         run: |
           uv sync --group lint
@@ -23,8 +25,6 @@ jobs:
   format:
     name: Check format with Ruff
     runs-on: ubuntu-latest
-    needs: changed-files
-    if: needs.changed-files.outputs.any_python_changed == 'true'
     steps:
       - uses: actions/checkout@v6
       - name: Install uv
@@ -39,8 +39,6 @@ jobs:
   mypy:
     name: Check type hints with mypy
     runs-on: ubuntu-latest
-    needs: changed-files
-    if: needs.changed-files.outputs.any_python_changed == 'true'
     steps:
       - uses: actions/checkout@v6
       - name: Install uv
