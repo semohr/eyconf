@@ -155,7 +155,10 @@ def _dataclass_to_lines(
     # Handle dataclass types
     # by parsing type hint
     dataclass_types = get_type_hints_resolve_namespace(
-        schema,
+        # For some reason inheritance can break the introspection if
+        # one does not use teh __init__ function
+        # https://github.com/python/cpython/issues/89687
+        schema.__init__,  # type: ignore[misc]
         include_extras=True,
     )
     all_fields = fields(schema)
