@@ -289,6 +289,22 @@ class TestGenerateDefault:
         yaml_str = dataclass_to_yaml(Schema)
         assert yaml_str == "nested:\n  foo: bar\n"
 
+    def test_inheritance(self):
+        @dataclass
+        class OptionalService:
+            enabled: bool = field(default=False)
+
+        @dataclass
+        class Service(OptionalService):
+            foo: str = field(default="bar")
+
+        @dataclass
+        class ServiceOuter:
+            service: Service = field(default_factory=Service)
+
+        yaml_str = dataclass_to_yaml(ServiceOuter)
+        assert yaml_str == "service:\n  enabled: false\n  foo: bar\n"
+
     def test_no_default(self):
         @dataclass
         class SchemaStrict:
