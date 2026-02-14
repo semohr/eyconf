@@ -17,6 +17,8 @@ from dataclasses import dataclass
 
 from typing import Annotated
 
+from eyconf.validation.validate import _allow_none_in_schema
+
 
 class TestToSchema:
     """
@@ -506,6 +508,19 @@ class TestToSchema:
             "required": ["the_bar", "foo"],
             "additionalProperties": False,
         }
+
+    @pytest.mark.parametrize(
+        "schema, expected",
+        (
+            ({"type": "string"}, {"type": ["string", "null"]}),
+            ({"type": ["string", "integer"]}, {"type": ["string", "integer", "null"]}),
+        ),
+    )
+    def test_allow_none_in_schema(self, schema, expected):
+        """Test that _allow_none_in_schema adds null to type lists."""
+        # Test single type -> becomes list with null
+        result = _allow_none_in_schema(schema)
+        assert result == expected
 
 
 # This function converts a dataclass to a TypedDict
