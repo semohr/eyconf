@@ -25,11 +25,11 @@ config = CustomConfig(ConfigSchema)
 
 ## Without YAML File / Memory Only Validation
 
-Sometimes you might want to create a configuration without creating or loading a YAML file. This is possible be using
-the {py:class}`~eyconf.config.EYConfBase` base class. We still expect you to provide a schema using dataclasses.
+Sometimes you might want to create a configuration without creating or loading a YAML file. This is possible by using
+the {py:class}`~eyconf.config.Config` base class. We still expect you to provide a schema using dataclasses.
 
 ```python
-from eyconf import EYConfBase
+from eyconf import Config
 
 
 @dataclass
@@ -50,7 +50,7 @@ class ConfigSchema:
     transport: Transport
 
 # Loaded from memory only
-config = {
+data = {
     "transport": {
         "host": "custom.example.com",
         "port": 993,
@@ -59,7 +59,7 @@ config = {
         "use_ssl": True,
     },
 }
-config = EYConfBase(data=config, schema=ConfigSchema)
+config = Config(data=data, schema=ConfigSchema)
 ```
 
 ## Dict style access
@@ -125,12 +125,12 @@ To integrate the CLI into your project, follow these steps:
 ```python
 from eyconf.cli import create_config_cli
 from eyconf import EYConf
-from your_project.config import ConfigSchema  # Adjust the import to your actual config schema
+from your_project.config import ConfigSchema, Config  # Adjust the imports
 from your_project import app  # Adjust the import to your actual Typer app
 
 # Your main typer app
 app = typer.Typer()
-sub_app = create_config_cli(EYConf, schema)
+sub_app = create_config_cli(Config, ConfigSchema)
 app.add_typer(sub_app, name="config")
 ```
 
@@ -207,7 +207,7 @@ from eyconf.decorators import allow_additional
 class ConfigSchema:
     known_field: int = 42
 
-config = EyConf(schema=ConfigSchema)
+config = EYConf(ConfigSchema)
 ```
 
 We can now edit the config yaml file to include additional fields:
