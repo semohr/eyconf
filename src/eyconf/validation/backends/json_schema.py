@@ -9,7 +9,6 @@ from typing import (
     Any,
     ClassVar,
     Literal,
-    NotRequired,
     Union,
     cast,
     get_args,
@@ -20,7 +19,7 @@ from typing import (
 from typing import Sequence as TypingSequence  # noqa: UP035  # noqa: UP035
 
 from jsonschema import Draft202012Validator, ValidationError
-from jsonschema.exceptions import SchemaError
+from typing_extensions import NotRequired
 
 from eyconf.asdict import asdict_with_aliases
 from eyconf.constants import primitive_type_mapping
@@ -191,9 +190,13 @@ class JsonSchemaValidator(Validator[D]):
             return {"type": "array", "items": item_schema}, is_required
 
         # TypedDict and dataclasses
-        if issubclass(type_, dict) or is_dataclass(type_):
+        try:
+            is_dict_subclass = issubclass(type_, dict)
+        except TypeError:
+            is_dict_subclass = False
+        if is_dict_subclass or is_dataclass(type_):
             marked_allow_additional = marked_as_allow_additional(type_)
-            schema: JsonSchema = {
+            json_schema: JsonSchema = {
                 "type": "object",
                 "properties": {},
                 "required": [],
@@ -211,11 +214,11 @@ class JsonSchemaValidator(Validator[D]):
                     field = alias  # Note: alias applied here
 
                 prop_schema, prop_required = self._build_schema(ftype)
-                schema["properties"][field] = prop_schema
+                json_schema["properties"][field] = prop_schema
                 if prop_required:
-                    schema["required"].append(field)
+                    json_schema["required"].append(field)
 
-            return schema, is_required
+            return json_schema, is_required
 
         # Dicts - arbitrary keys with typed values
         if origin is dict:
@@ -240,9 +243,9 @@ class JsonSchemaValidator(Validator[D]):
     def _infer_type_from_values(self, values: tuple | list) -> str | list[str]:
         r"""Infer JSON type(s) from Literal values (your helper)."""
         types = {type(v) for v in values}
-        type_names = [
-            primitive_type_mapping[t] for t in types if t in primitive_type_mapping
-        ]
+        type_names = sorted(
+            [primitive_type_mapping[t] for t in types if t in primitive_type_mapping]
+        )
         return type_names[0] if len(type_names) == 1 else type_names
 
 

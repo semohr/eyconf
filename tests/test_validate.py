@@ -1,6 +1,5 @@
 from __future__ import annotations
 from dataclasses import field, fields
-from pprint import pprint
 from typing import (
     Any,
     ClassVar,
@@ -138,8 +137,14 @@ class TestToJsonSchema:
         assert schema == {
             "type": "object",
             "properties": {
-                "foo": {"type": ["string", "boolean"], "enum": ["a", "b", False]},
-                "bar": {"type": ["integer", "null"], "enum": [1, None]},
+                "foo": {
+                    "type": ["boolean", "string"],
+                    "enum": ["a", "b", False],
+                },
+                "bar": {
+                    "type": ["integer", "null"],
+                    "enum": [1, None],
+                },
             },
             "required": ["foo", "bar"],
             "additionalProperties": allow_additional,
