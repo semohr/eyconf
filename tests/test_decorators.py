@@ -4,7 +4,7 @@ import pytest
 from eyconf.decorators import (
     DictSetAccess,
     allow_additional,
-    check_allows_additional,
+    marked_as_allow_additional,
     dict_access,
     DictAccess,
 )
@@ -40,17 +40,17 @@ class SchemaWithBoth:
 class TestAllowsAdditional:
     def test_allow_additional_sets_flag(self):
         config1 = SchemaWithAllowAdditional()
-        assert check_allows_additional(SchemaWithAllowAdditional)
-        assert check_allows_additional(config1)
+        assert marked_as_allow_additional(SchemaWithAllowAdditional)
+        assert marked_as_allow_additional(config1)
 
         config2 = SchemaWithBoth()
-        assert check_allows_additional(SchemaWithBoth)
-        assert check_allows_additional(config2)
+        assert marked_as_allow_additional(SchemaWithBoth)
+        assert marked_as_allow_additional(config2)
 
     def test_no_allow_additional_flag(self):
         config = SchemaUndercorated()
-        assert not check_allows_additional(SchemaUndercorated)
-        assert not check_allows_additional(config)
+        assert not marked_as_allow_additional(SchemaUndercorated)
+        assert not marked_as_allow_additional(config)
 
 
 class TestDictAccess:

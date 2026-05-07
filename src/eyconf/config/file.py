@@ -18,13 +18,13 @@ from typing import (
 import yaml
 
 from eyconf.asdict import asdict_with_aliases
+from eyconf.generate_yaml import dataclass_to_yaml
 from eyconf.utils import (
-    dataclass_from_dict,
     merge_dicts,
 )
-from eyconf.validation import to_json_schema, validate_json
+from eyconf.validation.backends.interface import Validator
 
-from .base import Config, dataclass_to_yaml
+from .base import Config
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -49,27 +49,20 @@ class EYConf(Config[D]):
     def __init__(
         self,
         schema: type[D],
+        validator: Validator[D] | None = None,
     ):
         if not is_dataclass(schema) or not isinstance(schema, type):
             raise ValueError(
                 "Schema must be a dataclass class. Instances are not supported yet."
             )
         self.path = self.get_file()
-
-        # Generate default configuration if it does not exist
         self._schema = schema
-        self._json_schema = to_json_schema(self._schema)
+
+        # Bootstrap config
         if not self.path.exists():
-            try:
-                self._data = schema()
-            except TypeError:
-                log.exception(
-                    "Schema dataclass has required fields without defaults. Consider using field with default_factory in your schema."
-                )
-                raise
             self._write_default()
-        else:
-            self._data = self._load_and_validate()
+
+        super().__init__(self._load_as_dict_with_defaults(), self._schema, validator)
 
     @staticmethod
     def get_file() -> Path:
@@ -86,11 +79,17 @@ class EYConf(Config[D]):
         This will overwrite the existing configuration file!
         """
         self._write_default()
-        self._data = self._load_and_validate()
+        self._data = self._validator.validate_and_construct(
+            self._load_as_dict_with_defaults(),
+            self._schema,
+        )
 
     def reload(self):
         """Reload the configuration by reloading and validating the file."""
-        self._data = self._load_and_validate()
+        self._data = self._validator.validate_and_construct(
+            self._load_as_dict_with_defaults(),
+            self._schema,
+        )
 
     def __repr__(self) -> str:
         """Return a custom string representation of the configuration object."""
@@ -122,22 +121,29 @@ class EYConf(Config[D]):
             f.write("\n")  # Add a newline at the end of the file
         log.info(f"Configuration file created at '{self.path.absolute()}'")
 
-    def _load_and_validate(self) -> D:
-        """Load the configuration file and validate it against the schema."""
+    def _load_as_dict_with_defaults(self) -> dict:
+        """Load the configuration file and merge default values from schema."""
         log.info(f"Loading config file: {self.path.absolute()}")
 
         if not self.path.exists():
             raise FileNotFoundError(
-                f"Configuration file '{self.path.absolute()}' not found. Please generate with `write_default()`."
+                f"Configuration file '{self.path.absolute()}' not found. Please generate"
+                " with `write_default()`."
             )
 
         # We load the schema first to allow for sane default merging
         # -> Load defaults, then merge with file contents
-        data: dict = asdict_with_aliases(self._schema())
+        try:
+            default_data: dict = asdict_with_aliases(self._schema())
+        except TypeError:
+            log.exception(
+                "Schema dataclass has required fields without defaults. Consider using "
+                "field with default_factory or default in your schema."
+            )
+            raise
+
         with open(self.path) as file:
-            data = merge_dicts(data, yaml.safe_load(file), priority="b")
+            # TODO: Handle scanner errors
+            data = merge_dicts(default_data, yaml.safe_load(file), priority="b")
 
-        # Will raise ConfigurationError if the data does not comply with the schema
-        validate_json(data, self._json_schema)
-
-        return dataclass_from_dict(self._schema, data)
+        return data

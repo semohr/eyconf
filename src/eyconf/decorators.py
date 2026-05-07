@@ -144,10 +144,10 @@ def allow_additional(cls: type[T]) -> type[T]:
     return cls
 
 
-def check_allows_additional(schema: D | type[D]) -> bool:
+def marked_as_allow_additional(schema: D | type[D] | type) -> bool | None:
     """Whether the dataclass allows additional properties."""
     if is_dataclass_type(schema):
-        return getattr(schema, f"_{schema.__name__}__allow_additional", False)
+        return getattr(schema, f"_{schema.__name__}__allow_additional", None)
     elif is_dataclass(schema) and not isinstance(schema, type):
-        return getattr(schema, f"_{schema.__class__.__name__}__allow_additional", False)
-    return False
+        return getattr(schema, f"_{schema.__class__.__name__}__allow_additional", None)
+    return None

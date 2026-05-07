@@ -9,25 +9,32 @@ from typing import (
     TypedDict,
 )
 from collections.abc import Sequence
+from eyconf.validation.backends.json_schema import JsonSchemaValidator
+from jsonschema.exceptions import SchemaError
 from typing_extensions import NotRequired
 import pytest
 from eyconf.type_utils import get_type_hints_resolve_namespace
-from eyconf.validation import to_json_schema
 from dataclasses import dataclass
 
 from typing import Annotated
 
 
-class TestToSchema:
+class TestToJsonSchema:
     """
     Test the dataclass to json schema function
     """
 
+    @pytest.mark.parametrize("as_dataclass", [True, False])
     @pytest.mark.parametrize(
-        ["as_dataclass", "allow_additional"],
-        [(True, False), (True, False)],
+        ["allow_additional", "validator"],
+        [
+            (True, JsonSchemaValidator(True)),
+            (False, JsonSchemaValidator(False)),
+        ],
     )
-    def test_primitives(self, as_dataclass, allow_additional):
+    def test_primitives(
+        self, as_dataclass: bool, allow_additional: bool, validator: JsonSchemaValidator
+    ):
         """Test a simple dataclass."""
 
         @dataclass
@@ -41,7 +48,7 @@ class TestToSchema:
         if not as_dataclass:
             Primitives = dataclass_to_typeddict(Primitives)  # type: ignore
 
-        schema = to_json_schema(Primitives, allow_additional=allow_additional)
+        schema = validator.to_json_schema(Primitives)
 
         assert schema == {
             "type": "object",
@@ -64,13 +71,19 @@ class TestToSchema:
             InvalidPrimitive = dataclass_to_typeddict(InvalidPrimitive)  # type: ignore
 
         with pytest.raises(ValueError):
-            to_json_schema(InvalidPrimitive)
+            validator.to_json_schema(InvalidPrimitive)
 
+    @pytest.mark.parametrize("as_dataclass", [True, False])
     @pytest.mark.parametrize(
-        ["as_dataclass", "allow_additional"],
-        [(True, False), (True, False)],
+        ["allow_additional", "validator"],
+        [
+            (True, JsonSchemaValidator(True)),
+            (False, JsonSchemaValidator(False)),
+        ],
     )
-    def test_literal(self, as_dataclass, allow_additional):
+    def test_literal(
+        self, as_dataclass: bool, allow_additional: bool, validator: JsonSchemaValidator
+    ):
         @dataclass
         class Schema:
             foo: Literal["bar", "baz"]
@@ -79,7 +92,7 @@ class TestToSchema:
         if not as_dataclass:
             Schema = dataclass_to_typeddict(Schema)  # type: ignore
 
-        schema = to_json_schema(Schema, allow_additional=allow_additional)
+        schema = validator.to_json_schema(Schema)
 
         assert schema == {
             "type": "object",
@@ -98,23 +111,30 @@ class TestToSchema:
         if not as_dataclass:
             InvalidLiteral = dataclass_to_typeddict(InvalidLiteral)  # type: ignore
 
-        with pytest.raises(ValueError):
-            to_json_schema(InvalidLiteral)
+        with pytest.raises(SchemaError):
+            validator.to_json_schema(InvalidLiteral)
+            breakpoint()
 
+    @pytest.mark.parametrize("as_dataclass", [True, False])
     @pytest.mark.parametrize(
-        ["as_dataclass", "allow_additional"],
-        [(True, False), (True, False)],
+        ["allow_additional", "validator"],
+        [
+            (True, JsonSchemaValidator(True)),
+            (False, JsonSchemaValidator(False)),
+        ],
     )
-    def test_literal_with_different_types(self, as_dataclass, allow_additional):
+    def test_literal_with_different_types(
+        self, as_dataclass: bool, allow_additional: bool, validator: JsonSchemaValidator
+    ):
         @dataclass
         class Schema:
             foo: Literal["a", "b", False]
             bar: Literal[1, None]
 
         if not as_dataclass:
-            Schema = dataclass_to_typeddict(Schema, allow_additional=allow_additional)  # type: ignore
+            Schema = dataclass_to_typeddict(Schema)  # type: ignore
 
-        schema = to_json_schema(Schema, allow_additional=allow_additional)
+        schema = validator.to_json_schema(Schema)
         assert schema == {
             "type": "object",
             "properties": {
@@ -125,11 +145,17 @@ class TestToSchema:
             "additionalProperties": allow_additional,
         }
 
+    @pytest.mark.parametrize("as_dataclass", [True, False])
     @pytest.mark.parametrize(
-        ["as_dataclass", "allow_additional"],
-        [(True, False), (True, False)],
+        ["allow_additional", "validator"],
+        [
+            (True, JsonSchemaValidator(True)),
+            (False, JsonSchemaValidator(False)),
+        ],
     )
-    def test_optional(self, as_dataclass, allow_additional):
+    def test_optional(
+        self, as_dataclass: bool, allow_additional: bool, validator: JsonSchemaValidator
+    ):
         @dataclass
         class Schema:
             foo: str | None
@@ -137,10 +163,9 @@ class TestToSchema:
             baz: float
 
         if not as_dataclass:
-            Schema = dataclass_to_typeddict(Schema, allow_additional=allow_additional)  # type: ignore
+            Schema = dataclass_to_typeddict(Schema)  # type: ignore
 
-        schema = to_json_schema(Schema, allow_additional=allow_additional)
-        print(schema)
+        schema = validator.to_json_schema(Schema)
         assert schema == {
             "type": "object",
             "properties": {
@@ -152,20 +177,26 @@ class TestToSchema:
             "additionalProperties": allow_additional,
         }
 
+    @pytest.mark.parametrize("as_dataclass", [True, False])
     @pytest.mark.parametrize(
-        ["as_dataclass", "allow_additional"],
-        [(True, False), (True, False)],
+        ["allow_additional", "validator"],
+        [
+            (True, JsonSchemaValidator(True)),
+            (False, JsonSchemaValidator(False)),
+        ],
     )
-    def test_union(self, as_dataclass, allow_additional):
+    def test_union(
+        self, as_dataclass: bool, allow_additional: bool, validator: JsonSchemaValidator
+    ):
         @dataclass
         class Schema:
             foo: str | int
             bar: int | float
 
         if not as_dataclass:
-            Schema = dataclass_to_typeddict(Schema, allow_additional=allow_additional)  # type: ignore
+            Schema = dataclass_to_typeddict(Schema)  # type: ignore
 
-        schema = to_json_schema(Schema, allow_additional=allow_additional)
+        schema = validator.to_json_schema(Schema)
 
         assert sorted(
             schema["properties"]["foo"]["anyOf"], key=lambda x: x["type"]
@@ -174,11 +205,17 @@ class TestToSchema:
             schema["properties"]["bar"]["anyOf"], key=lambda x: x["type"]
         ) == [{"type": "integer"}, {"type": "number"}]
 
+    @pytest.mark.parametrize("as_dataclass", [True, False])
     @pytest.mark.parametrize(
-        ["as_dataclass", "allow_additional"],
-        [(True, False), (True, False)],
+        ["allow_additional", "validator"],
+        [
+            (True, JsonSchemaValidator(True)),
+            (False, JsonSchemaValidator(False)),
+        ],
     )
-    def test_nested_dict(self, as_dataclass, allow_additional):
+    def test_nested_dict(
+        self, as_dataclass, allow_additional, validator: JsonSchemaValidator
+    ):
         @dataclass
         class Dict1:
             foo: str
@@ -196,8 +233,7 @@ class TestToSchema:
         if not as_dataclass:
             NestedTyped = dataclass_to_typeddict(NestedTyped)  # type: ignore
 
-        schema = to_json_schema(NestedTyped, allow_additional=allow_additional)
-        pprint(schema)
+        schema = validator.to_json_schema(NestedTyped)
         assert schema["type"] == "object"
         assert schema["required"] == ["dict1", "dict_uni"]
         assert ["dict1", "dict_opt", "dict_uni", "baz"] == list(
@@ -208,7 +244,7 @@ class TestToSchema:
             "type": "object",
             "properties": {"foo": {"type": "string"}},
             "required": ["foo"],
-            "additionalProperties": allow_additional,
+            "additionalProperties": validator.allow_additional,
         }
 
         assert schema["properties"]["dict1"] == dict1_obj
@@ -220,11 +256,15 @@ class TestToSchema:
             or schema["properties"]["dict_uni"]["anyOf"][1] == dict1_obj
         )
 
+    @pytest.mark.parametrize("as_dataclass", [True, False])
     @pytest.mark.parametrize(
-        ["as_dataclass", "allow_additional"],
-        [(True, False), (True, False)],
+        ["allow_additional", "validator"],
+        [
+            (True, JsonSchemaValidator(True)),
+            (False, JsonSchemaValidator(False)),
+        ],
     )
-    def test_lists(self, as_dataclass, allow_additional):
+    def test_lists(self, as_dataclass, allow_additional, validator):
         @dataclass
         class Schema:
             foo: list[str]
@@ -233,7 +273,7 @@ class TestToSchema:
         if not as_dataclass:
             Schema = dataclass_to_typeddict(Schema)  # type: ignore
 
-        schema = to_json_schema(Schema, allow_additional=allow_additional)
+        schema = validator.to_json_schema(Schema)
         assert schema == {
             "type": "object",
             "properties": {
@@ -246,11 +286,15 @@ class TestToSchema:
             "additionalProperties": allow_additional,
         }
 
+    @pytest.mark.parametrize("as_dataclass", [True, False])
     @pytest.mark.parametrize(
-        ["as_dataclass", "allow_additional"],
-        [(True, False), (True, False)],
+        ["allow_additional", "validator"],
+        [
+            (True, JsonSchemaValidator(True)),
+            (False, JsonSchemaValidator(False)),
+        ],
     )
-    def test_dicts(self, as_dataclass, allow_additional):
+    def test_dicts(self, as_dataclass, allow_additional, validator):
         @dataclass
         class Schema:
             foo: dict[str, int]
@@ -259,20 +303,20 @@ class TestToSchema:
         if not as_dataclass:
             Schema = dataclass_to_typeddict(Schema)  # type: ignore
 
-        schema = to_json_schema(Schema, allow_additional=allow_additional)
+        schema = validator.to_json_schema(Schema)
         assert schema == {
             "type": "object",
             "properties": {
                 "foo": {
                     "type": "object",
                     "patternProperties": {
-                        ".*": {"type": "integer"},
+                        "^.*$": {"type": "integer"},
                     },
                 },
                 "bar": {
                     "type": "object",
                     "patternProperties": {
-                        ".*": {"type": "string"},
+                        "^.*$": {"type": "string"},
                     },
                 },
             },
@@ -280,11 +324,15 @@ class TestToSchema:
             "additionalProperties": allow_additional,
         }
 
+    @pytest.mark.parametrize("as_dataclass", [True, False])
     @pytest.mark.parametrize(
-        ["as_dataclass", "allow_additional"],
-        [(True, False), (True, False)],
+        ["allow_additional", "validator"],
+        [
+            (True, JsonSchemaValidator(True)),
+            (False, JsonSchemaValidator(False)),
+        ],
     )
-    def test_dict_nested(self, as_dataclass, allow_additional):
+    def test_dict_nested(self, as_dataclass, allow_additional, validator):
         @dataclass
         class Inner:
             inner: int
@@ -296,7 +344,7 @@ class TestToSchema:
         if not as_dataclass:
             Outer = dataclass_to_typeddict(Outer)  # type: ignore
 
-        schema = to_json_schema(Outer, allow_additional=allow_additional)
+        schema = validator.to_json_schema(Outer)
 
         assert schema == {
             "type": "object",
@@ -304,7 +352,7 @@ class TestToSchema:
                 "outer": {
                     "type": "object",
                     "patternProperties": {
-                        ".*": {
+                        "^.*$": {
                             "type": "object",
                             "properties": {
                                 "inner": {"type": "integer"},
@@ -319,7 +367,14 @@ class TestToSchema:
             "additionalProperties": allow_additional,
         }
 
-    def test_not_required(self):
+    @pytest.mark.parametrize(
+        ["allow_additional", "validator"],
+        [
+            (True, JsonSchemaValidator(True)),
+            (False, JsonSchemaValidator(False)),
+        ],
+    )
+    def test_not_required(self, allow_additional, validator):
         class MyTypedDict1(TypedDict):
             foo: NotRequired[str]
             bar: NotRequired[int]
@@ -327,7 +382,7 @@ class TestToSchema:
             qux: NotRequired[bool]
             nay: NotRequired[None]
 
-        schema = to_json_schema(MyTypedDict1)
+        schema = validator.to_json_schema(MyTypedDict1)
 
         assert schema == {
             "type": "object",
@@ -339,63 +394,84 @@ class TestToSchema:
                 "nay": {"type": "null"},
             },
             "required": [],
-            "additionalProperties": False,
+            "additionalProperties": allow_additional,
         }
 
-    def test_special(self):
+    @pytest.mark.parametrize(
+        ["allow_additional", "validator"],
+        [
+            (True, JsonSchemaValidator(True)),
+            (False, JsonSchemaValidator(False)),
+        ],
+    )
+    def test_special(self, allow_additional, validator):
         @dataclass
         class Schema:
             foo: None
 
-        schema = to_json_schema(Schema)
+        schema = validator.to_json_schema(Schema)
         assert schema == {
             "type": "object",
             "properties": {
                 "foo": {"type": "null"},
             },
             "required": ["foo"],
-            "additionalProperties": False,
+            "additionalProperties": allow_additional,
         }
 
         @dataclass
         class SchemaAny:
             foo: Any
 
-        schema = to_json_schema(SchemaAny)
+        schema = validator.to_json_schema(SchemaAny)
         assert schema == {
             "type": "object",
             "properties": {
                 "foo": {},
             },
             "required": ["foo"],
-            "additionalProperties": False,
+            "additionalProperties": allow_additional,
         }
 
         @dataclass
         class UnionNone:
             foo: Optional[None]  # noqa: UP045
 
-        schema = to_json_schema(UnionNone)
+        schema = validator.to_json_schema(UnionNone)
         assert schema == {
             "type": "object",
             "properties": {
                 "foo": {"type": "null"},
             },
             "required": ["foo"],
-            "additionalProperties": False,
+            "additionalProperties": allow_additional,
         }
 
-    def test_cache_hit(self):
+    @pytest.mark.parametrize(
+        ["validator"],
+        [
+            (JsonSchemaValidator(True),),
+            (JsonSchemaValidator(False),),
+        ],
+    )
+    def test_cache_hit(self, validator):
         @dataclass
         class Schema:
             foo: str
 
-        schema = to_json_schema(Schema)
-        schema2 = to_json_schema(Schema)
+        schema = validator.to_json_schema(Schema)
+        schema2 = validator.to_json_schema(Schema)
 
         assert schema is schema2
 
-    def test_non_str_dict(self):
+    @pytest.mark.parametrize(
+        ["validator"],
+        [
+            (JsonSchemaValidator(True),),
+            (JsonSchemaValidator(False),),
+        ],
+    )
+    def test_non_str_dict(self, validator):
         @dataclass
         class Schema:
             foo: dict[int, str]
@@ -404,15 +480,22 @@ class TestToSchema:
             ValueError,
             match="Only string keys are supported in dict types",
         ):
-            to_json_schema(Schema)
+            validator.to_json_schema(Schema)
 
-    def test_annotated(self):
+    @pytest.mark.parametrize(
+        ["allow_additional", "validator"],
+        [
+            (True, JsonSchemaValidator(True)),
+            (False, JsonSchemaValidator(False)),
+        ],
+    )
+    def test_annotated(self, allow_additional, validator):
         @dataclass
         class Schema:
             foo: Annotated[str, "some metadata"]
             bar: Annotated[int, "some metadata", "more metadata"]
 
-        schema = to_json_schema(Schema)
+        schema = validator.to_json_schema(Schema)
         assert schema == {
             "type": "object",
             "properties": {
@@ -420,14 +503,14 @@ class TestToSchema:
                 "bar": {"type": "integer"},
             },
             "required": ["foo", "bar"],
-            "additionalProperties": False,
+            "additionalProperties": allow_additional,
         }
 
         @dataclass
         class NestedAnnotated:
             schema: Schema
 
-        schema = to_json_schema(NestedAnnotated)
+        schema = validator.to_json_schema(NestedAnnotated)
         assert schema == {
             "type": "object",
             "properties": {
@@ -438,26 +521,27 @@ class TestToSchema:
                         "bar": {"type": "integer"},
                     },
                     "required": ["foo", "bar"],
-                    "additionalProperties": False,
+                    "additionalProperties": allow_additional,
                 }
             },
             "required": ["schema"],
-            "additionalProperties": False,
+            "additionalProperties": allow_additional,
         }
 
-    def test_allow_additional(self):
+    @pytest.mark.parametrize(
+        ["allow_additional", "validator"],
+        [
+            (True, JsonSchemaValidator(True)),
+            (False, JsonSchemaValidator(False)),
+        ],
+    )
+    def test_allow_additional_marker(self, allow_additional, validator):
         @dataclass
         class Schema2:
             foo: str
             __allow_additional: ClassVar[bool] = True
 
-        schema = to_json_schema(Schema2)
-        assert schema["additionalProperties"] is True
-
-        schema = to_json_schema(Schema2, allow_additional=False)
-        assert schema["additionalProperties"] is False
-
-        schema = to_json_schema(Schema2, allow_additional=True)
+        schema = validator.to_json_schema(Schema2)
         assert schema["additionalProperties"] is True
 
         @dataclass
@@ -465,11 +549,18 @@ class TestToSchema:
             bar: Schema2
             __allow_additional: ClassVar[bool] = False
 
-        schema = to_json_schema(Schema3)
+        schema = validator.to_json_schema(Schema3)
         assert schema["additionalProperties"] is False
         assert schema["properties"]["bar"]["additionalProperties"] is True
 
-    def test_literal_in_union(self):
+    @pytest.mark.parametrize(
+        ["validator"],
+        [
+            (JsonSchemaValidator(True),),
+            (JsonSchemaValidator(False),),
+        ],
+    )
+    def test_literal_in_union(self, validator):
         """For some reason Literals inside Unions have `Union` as their origin
         instead of `UnionType`. Might be a Python bug!
 
@@ -484,19 +575,26 @@ class TestToSchema:
         class Schema:
             foo: str | Literal["bar", "baz"]
 
-        schema = to_json_schema(Schema)
+        schema = validator.to_json_schema(Schema)
         assert sorted(schema["properties"]["foo"]["anyOf"], key=lambda x: str(x)) == [
             {"type": "string", "enum": ["bar", "baz"]},
             {"type": "string"},
         ]
 
-    def test_alias_handling(self):
+    @pytest.mark.parametrize(
+        ["allow_additional", "validator"],
+        [
+            (True, JsonSchemaValidator(True)),
+            (False, JsonSchemaValidator(False)),
+        ],
+    )
+    def test_alias_handling(self, allow_additional, validator):
         @dataclass
         class Schema:
             bar: int = field(metadata={"alias": "the_bar"})
             foo: str
 
-        schema = to_json_schema(Schema)
+        schema = validator.to_json_schema(Schema)
         assert schema == {
             "type": "object",
             "properties": {
@@ -504,7 +602,7 @@ class TestToSchema:
                 "the_bar": {"type": "integer"},
             },
             "required": ["the_bar", "foo"],
-            "additionalProperties": False,
+            "additionalProperties": allow_additional,
         }
 
 
