@@ -135,19 +135,19 @@ def allow_additional(cls: type[T]) -> type[T]:
     This prevent validation errors if a dataclass instance holds an attribute
     that is not defined in the dataclass schema.
 
-    Note this will not automatically load additional (none-schema) fields from the yaml.
-    To also load additional fields use `EyConfExtraFields` as base class for your
-    configuration dataclass.
+    Note this will not automatically load additional (non-schema) fields from the yaml.
+    To also load additional fields use `ConfigExtra` as base class for your
+    configuration.
     """
     mangled = f"_{cls.__name__}__allow_additional"
     setattr(cls, mangled, True)
     return cls
 
 
-def check_allows_additional(schema: D | type[D]) -> bool:
+def marked_as_allow_additional(schema: D | type[D] | type) -> bool | None:
     """Whether the dataclass allows additional properties."""
     if is_dataclass_type(schema):
-        return getattr(schema, f"_{schema.__name__}__allow_additional", False)
+        return getattr(schema, f"_{schema.__name__}__allow_additional", None)
     elif is_dataclass(schema) and not isinstance(schema, type):
-        return getattr(schema, f"_{schema.__class__.__name__}__allow_additional", False)
-    return False
+        return getattr(schema, f"_{schema.__class__.__name__}__allow_additional", None)
+    return None

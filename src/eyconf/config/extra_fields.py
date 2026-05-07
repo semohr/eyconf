@@ -4,7 +4,7 @@ import logging
 from copy import deepcopy
 from dataclasses import is_dataclass
 from functools import cache
-from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from eyconf.asdict import asdict_with_aliases
 from eyconf.type_utils import (
@@ -14,12 +14,10 @@ from eyconf.type_utils import (
 )
 from eyconf.utils import (
     Metadata,
-    dataclass_from_dict,
     merge_dicts,
     metadata_fields_from_dataclass,
 )
-from eyconf.validation import validate
-from eyconf.validation._to_json import to_json_schema
+from eyconf.validation.backends.json_schema import JsonSchemaValidator
 
 from .base import Config
 
@@ -193,19 +191,8 @@ class ConfigExtra(Config[D]):
                     f"{getattr(s, '__allow_additional')}."
                 )
 
-        # Create schema, raise if Schema is invalid
-        self._json_schema = to_json_schema(self._schema)
-
-        # Will raise ConfigurationError if the data does not comply with the schema
-        validate(data, self._json_schema)
-
+        super().__init__(data, schema, JsonSchemaValidator(True))
         self._extra_data = dict()
-
-        if is_dataclass(data):
-            self._data = cast(D, data)
-        else:
-            self._data = dataclass_from_dict(self._schema, data)
-
         self._access_proxy = AccessProxy(
             data=self._data,
             extra_data=self._extra_data,

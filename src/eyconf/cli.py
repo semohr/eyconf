@@ -5,10 +5,11 @@ Allows to easily integrate configuration management into command line applicatio
 Usage:
 ------
 ```python
-from eyconf.cli import config_cli
+from eyconf.cli import create_config_cli
 
 app = typer.Typer()
-app.subcommand(config_cli, name="config")
+config_cli = create_config_cli(EYConf, schema=MyConfig)
+app.add_typer(config_cli, name="config")
 ```
 """
 

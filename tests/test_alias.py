@@ -3,13 +3,13 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 
 from typing import Any, TypeVar
+from eyconf.validation.backends.json_schema import JsonSchemaValidator
 import pytest
 from eyconf import Config, ConfigExtra
 from eyconf.asdict import asdict_with_aliases
 from eyconf.decorators import allow_additional, dict_access
 from eyconf.validation import (
     MultiConfigurationError,
-    validate,
 )
 
 T = TypeVar("T", bound=Any)
@@ -66,6 +66,11 @@ class AliasDictConfig:
     str_field: str = "FortyTwo!"
 
 
+@pytest.fixture
+def validator():
+    return JsonSchemaValidator()
+
+
 class TestAlias:
     def test_utils(self):
         config = AliasConfig(attr_field=42)
@@ -76,28 +81,28 @@ class TestAlias:
         nested_dump = asdict_with_aliases(nested_config)
         assert nested_dump["nested"]["dict_field"] == 43
 
-    def test_validate(self):
+    def test_validate(self, validator):
         config = AliasConfig(attr_field=42)
 
         # this should not raise, since we have aliases
-        validate(config, schema=AliasConfig)
-        validate(asdict_with_aliases(config), schema=AliasConfig)
+        validator.validate(config, schema=AliasConfig)
+        validator.validate(asdict_with_aliases(config), schema=AliasConfig)
 
         with pytest.raises(MultiConfigurationError):
             # using the dataclasses native asdict
             # will not do our alias mapping so it should fail
-            validate(asdict(config), schema=AliasConfig)
+            validator.validate(asdict(config), schema=AliasConfig)
 
-    def test_validate_additional(self):
+    def test_validate_additional(self, validator):
         config = AliasConfig(attr_field=42)
 
         config.foo = "bar"  # type: ignore
 
         with pytest.raises(MultiConfigurationError):
             # By default, no additional attributes are allowed.
-            validate(config, schema=AliasConfig)
+            validator.validate(config, schema=AliasConfig)
 
-        validate(config, schema=AliasConfigAdditional)
+        validator.validate(config, schema=AliasConfigAdditional)
 
     def test_dict_alias_update(self):
         config = Config(AliasConfig(attr_field=42))

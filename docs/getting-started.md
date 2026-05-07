@@ -56,7 +56,7 @@ class ConfigSchema:
 ### 2. Create and Use Configuration
 
 We can now create a configuration using the {py:class}`~eyconf.config.EYConf` class directly, if you need
-more control it is also possible to extend the class or use the {py:class}`~eyconf.config.EYConfBase` base class.
+more control it is also possible to extend the class or use the {py:class}`~eyconf.config.Config` base class.
 
 ```python
 from eyconf import EYConf
@@ -92,14 +92,14 @@ other:
 Edit `config.yaml` and reload changes:
 
 ```yaml
-database:
+transport:
   host: production-db.example.com
   username: prod_user
 ```
 
 ```python
-config.refresh()
-print(config.data.database.host)  # "production-db.example.com"
+config.reload()
+print(config.data.transport.host)  # "production-db.example.com"
 ```
 
 Configuration errors will be caught during loading with detailed error messages:
@@ -111,7 +111,7 @@ transport:
 ```
 
 ```python
-config.refresh()
+config.reload()
 # Raises
 # ConfigurationError:
 # 'not_a_number' is not of type 'integer' in section 'transport.port'

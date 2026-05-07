@@ -14,7 +14,6 @@ from typing import (
     Any,
     Generic,
     TypeVar,
-    cast,
 )
 
 from eyconf.asdict import asdict_with_aliases
@@ -25,7 +24,8 @@ from eyconf.type_utils import (
     is_dataclass_type,
 )
 from eyconf.utils import dataclass_from_dict, dict_items_resolve_aliases
-from eyconf.validation import to_json_schema, validate, validate_json
+from eyconf.validation.backends.interface import Validator
+from eyconf.validation.backends.json_schema import JsonSchemaValidator
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -48,16 +48,18 @@ class Config(Generic[D]):
 
     _schema: type[D]
     _data: D
-    _json_schema: dict
+    _validator: Validator[D]
 
     def __init__(
         self,
         data: dict | D,
         schema: type[D] | None = None,
+        validator: Validator[D] | None = None,
     ):
         if is_dataclass_type(data):
             raise ValueError("Data must be a dict or datacalss instance, not schema!")
 
+        # Schema
         if schema is not None:
             self._schema = schema
         else:
@@ -67,20 +69,18 @@ class Config(Generic[D]):
                 )
             self._schema = type(data)
 
-        # Create schema, raise if Schema is invalid
-        self._json_schema = to_json_schema(self._schema)
+        # Validator
+        if validator is None:
+            self._validator = JsonSchemaValidator()
+        else:
+            self._validator = validator
 
         # Will raise ConfigurationError if the data does not comply with the schema
-        validate(data, self._json_schema)
-
-        if is_dataclass(data):
-            self._data = cast(D, data)
-        else:
-            self._data = dataclass_from_dict(self._schema, data)
+        self._data = self._validator.validate_and_construct(data, self._schema)
 
     def validate(self):
         """Validate the current data against the schema."""
-        validate(self._data, self._json_schema)
+        self._validator.validate(self._data, self._schema)
 
     def update(self, data: dict[str, Any]):
         """Update the configuration with provided data.
@@ -185,9 +185,7 @@ class Config(Generic[D]):
 
         If the provided data is missing required fields, an error will be raised.
         """
-        data = asdict(data) if is_dataclass(data) else data
-        validate_json(data, self._json_schema)
-        self._data = dataclass_from_dict(self._schema, data)
+        self._data = self._validator.validate_and_construct(data, self._schema)
 
     def reset(self):
         """Reset the configuration data to the default values."""
