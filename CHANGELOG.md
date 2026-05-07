@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0]
+
+### Added
+
+- Added the option to define custom validation backends. For now we only support JsonSchema out of the box, but it should be pretty straight forward to enhance.
+
+### Fixed
+
+- Fixed documentation references to non-existent classes (`EYConfBase` → `Config`, `EyConfExtraFields` → `ConfigExtra`)
+- Fixed documentation examples: `refresh()` → `reload()` method name
+- Fixed typos in documentation and docstrings (`EyConf` → `EYConf`)
+- Updated CLI integration examples to match actual API (`create_config_cli` signature)
+- Fixed `allow_additional` decorator docstring to reference correct `ConfigExtra` class
+- Updated module docstrings and examples throughout the codebase
+
 ## [0.6.2]
 
 - Fixed issue in `generate_yaml`: It would raise on edge cases if schema was defined via inheritance
