@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## Upcoming
+
+### Other
+
+- Validation tests are now backend agnostic. 
+
 ## [0.7.0]
 
 ### Added
