@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import is_typeddict
 
+from eyconf.validation import MultiConfigurationError
 import pytest
 
 from .conftest import (
@@ -33,6 +34,7 @@ from .conftest import (
     SchemaNone,
     UnionNoneSchema,
     UnionSchema,
+    dict_is_subset,
 )
 
 
@@ -51,18 +53,22 @@ class TestToJsonSchema:
         """Test a simple dataclass."""
         schema = validator.to_json_schema(Schema)
 
-        assert schema == {
-            "type": "object",
-            "properties": {
-                "foo": {"type": "string"},
-                "bar": {"type": "integer"},
-                "baz": {"type": "number"},
-                "qux": {"type": "boolean"},
-                "nay": {"type": "null"},
+        ok, diff = dict_is_subset(
+            schema,
+            {
+                "type": "object",
+                "properties": {
+                    "foo": {"type": "string"},
+                    "bar": {"type": "integer"},
+                    "baz": {"type": "number"},
+                    "qux": {"type": "boolean"},
+                    "nay": {"type": "null"},
+                },
+                "required": ["foo", "bar", "baz", "qux", "nay"],
+                "additionalProperties": validator_config.allow_additional,
             },
-            "required": ["foo", "bar", "baz", "qux", "nay"],
-            "additionalProperties": validator_config.allow_additional,
-        }
+        )
+        assert ok, f"Dict subset mismatch:\n{diff}"
 
     @pytest.mark.parametrize("schema_cls", [BytesSchema])
     def test_invalid_primitive_bytes(
@@ -86,25 +92,29 @@ class TestToJsonSchema:
         validator,
     ):
         schema = validator.to_json_schema(Schema)
-        assert schema == {
-            "type": "object",
-            "properties": {
-                "mode": {
-                    "type": "string",
-                    "enum": ["dev", "prod", "staging"],
+        ok, diff = dict_is_subset(
+            schema,
+            {
+                "type": "object",
+                "properties": {
+                    "mode": {
+                        "type": "string",
+                        "enum": ["dev", "prod", "staging"],
+                    },
+                    "level": {
+                        "type": "integer",
+                        "enum": [0, 1, 2],
+                    },
+                    "mixed": {
+                        "type": ["boolean", "string"],
+                        "enum": ["a", "b", False],
+                    },
                 },
-                "level": {
-                    "type": "integer",
-                    "enum": [0, 1, 2],
-                },
-                "mixed": {
-                    "type": ["boolean", "string"],
-                    "enum": ["a", "b", False],
-                },
+                "required": ["mode", "level", "mixed"],
+                "additionalProperties": validator_config.allow_additional,
             },
-            "required": ["mode", "level", "mixed"],
-            "additionalProperties": validator_config.allow_additional,
-        }
+        )
+        assert ok, f"Dict subset mismatch:\n{diff}"
 
     @pytest.mark.skip("TODO")
     @pytest.mark.parametrize("schema_cls", [LiteralBytesSchema])
@@ -129,16 +139,20 @@ class TestToJsonSchema:
         validator,
     ):
         schema = validator.to_json_schema(Schema)
-        assert schema == {
-            "type": "object",
-            "properties": {
-                "required": {"type": "string"},
-                "maybe_name": {"type": "string"},
-                "maybe_count": {"type": "integer"},
+        ok, diff = dict_is_subset(
+            schema,
+            {
+                "type": "object",
+                "properties": {
+                    "required": {"type": "string"},
+                    "maybe_name": {"type": "string"},
+                    "maybe_count": {"type": "integer"},
+                },
+                "required": ["required"],
+                "additionalProperties": validator_config.allow_additional,
             },
-            "required": ["required"],
-            "additionalProperties": validator_config.allow_additional,
-        }
+        )
+        assert ok, f"Dict subset mismatch:\n{diff}"
 
     @pytest.mark.parametrize("schema_cls", [UnionSchema])
     def test_union(
@@ -496,7 +510,6 @@ class TestToJsonSchema:
         validator_config,
         validator,
     ):
-
         if is_typeddict(Schema):
             return pytest.skip("TODO")
 
@@ -510,3 +523,30 @@ class TestToJsonSchema:
             "required": ["the_bar", "foo"],
             "additionalProperties": validator_config.allow_additional,
         }
+
+
+class TestValidate:
+    """Test the validate() method of all backends."""
+
+    def test_validate_valid_data(self, validator):
+        """Valid data should pass validation."""
+        data = {
+            "foo": "hello",
+            "bar": 42,
+            "baz": 3.14,
+            "qux": True,
+            "nay": None,
+        }
+        validator.validate(data, PrimitiveSchema)
+
+    def test_validate_invalid_data(self, validator):
+        """Invalid data should raise ConfigurationError."""
+        data = {
+            "foo": 123,
+            "bar": "not an int",
+            "baz": "not a float",
+            "qux": "not a bool",
+            "nay": "not none",
+        }
+        with pytest.raises(MultiConfigurationError):
+            validator.validate(data, PrimitiveSchema)

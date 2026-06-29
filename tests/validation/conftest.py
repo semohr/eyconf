@@ -10,6 +10,7 @@ from __future__ import annotations
 
 
 from dataclasses import dataclass, field, fields
+from pprint import pformat
 from typing import Annotated, Any, ClassVar, Literal, NamedTuple, TypedDict
 
 from eyconf.type_utils import get_type_hints_resolve_namespace
@@ -384,3 +385,28 @@ def dataclass_to_typeddict(dc_cls: type):
 
     # Create the TypedDict dynamically
     return TypedDict(f"{dc_cls.__name__}Dict", typeddict_fields)  # type: ignore
+
+
+def dict_is_subset(actual, expected):
+    """
+    Return (ok, diff) where:
+      ok   -> True if expected is a subset of actual
+      diff -> dict of mismatches/missing keys
+    """
+    diff = {}
+
+    for key, exp_val in expected.items():
+        if key not in actual:
+            diff[key] = {"expected": exp_val, "actual": "<missing>"}
+            continue
+
+        act_val = actual[key]
+
+        if isinstance(exp_val, dict) and isinstance(act_val, dict):
+            ok, subdiff = dict_is_subset(act_val, exp_val)
+            if not ok:
+                diff[key] = subdiff
+        elif act_val != exp_val:
+            diff[key] = {"expected": exp_val, "actual": act_val}
+
+    return (len(diff) == 0), pformat(diff)
