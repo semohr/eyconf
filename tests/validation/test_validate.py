@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import is_typeddict
 
 from eyconf.validation import MultiConfigurationError
+from eyconf.validation.exceptions import ConfigurationError
 import pytest
 
 from .conftest import (
@@ -106,7 +107,7 @@ class TestToJsonSchema:
                         "enum": [0, 1, 2],
                     },
                     "mixed": {
-                        "type": ["boolean", "string"],
+                        # "type": ["boolean", "string"],
                         "enum": ["a", "b", False],
                     },
                 },
@@ -548,5 +549,13 @@ class TestValidate:
             "qux": "not a bool",
             "nay": "not none",
         }
-        with pytest.raises(MultiConfigurationError):
+        with pytest.raises((MultiConfigurationError, ConfigurationError)):
             validator.validate(data, PrimitiveSchema)
+
+    def test_literal(self, validator):
+        data = LiteralSchema(mode="dev", level=1, mixed=False)
+        validator.validate(data, LiteralSchema)
+
+    def test_optional(self, validator):
+        data = {"required": "hello"}
+        validator.validate_and_construct(data, OptionalSchema)

@@ -337,6 +337,8 @@ class ValidatorConfig(NamedTuple):
     params=[
         pytest.param(("json_schema", True), id="json-allow"),
         pytest.param(("json_schema", False), id="json-deny"),
+        pytest.param(("pydantic", True), id="pydantic-allow"),
+        pytest.param(("pydantic", False), id="pydantic-deny"),
         # pytest.param(("msgspec", True), id="msgspec-allow"),
         # pytest.param(("msgspec", False), id="msgspec-deny"),
     ],
@@ -362,6 +364,10 @@ def validator(validator_config):
         from eyconf.validation.backends.json_schema import JsonSchemaValidator
 
         return JsonSchemaValidator(allow_additional=allow_additional)
+    if backend == "pydantic":
+        from eyconf.validation.backends.pydantic import PydanticValidator
+
+        return PydanticValidator(allow_additional=allow_additional)
 
     raise ValueError(f"Unknown validation backend: {backend!r}")
 

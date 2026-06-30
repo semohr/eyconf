@@ -25,7 +25,7 @@ from eyconf.asdict import asdict_with_aliases
 from eyconf.constants import primitive_type_mapping
 from eyconf.decorators import marked_as_allow_additional
 from eyconf.type_utils import get_type_hints_resolve_namespace, is_dataclass_type
-from eyconf.utils import dataclass_from_dict, metadata_fields_from_dataclass
+from eyconf.utils import metadata_fields_from_dataclass
 from eyconf.validation import (
     ConfigurationError,
     MultiConfigurationError,
@@ -96,13 +96,6 @@ class JsonSchemaValidator(Validator[D]):
         if is_dataclass(data):
             data = asdict_with_aliases(data)
         self._validate_dict(data, json_schema)
-
-    def validate_and_construct(self, data: D | dict[str, Any], schema: type[D]) -> D:
-        """Validate and construct dataclass instance."""
-        self.validate(data, schema)
-        if is_dataclass(data):
-            return data
-        return dataclass_from_dict(schema, data)
 
     def _validate_dict(self, data: dict[str, Any], json_schema: JsonSchema):
         schema = self._allow_none_in_schema(json_schema)

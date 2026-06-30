@@ -1,8 +1,11 @@
 """Defines the common validation interface."""
 
 from abc import abstractmethod
+from dataclasses import is_dataclass
 from functools import cache
 from typing import TYPE_CHECKING, Any, Protocol, TypeVar, runtime_checkable
+
+from eyconf.utils import dataclass_from_dict
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -68,11 +71,9 @@ class Validator(Protocol[D]):
         -----
         Backends may implement custom error types but must be catchable
         by Config's exception handling.
-
         """
         ...
 
-    @abstractmethod
     def validate_and_construct(self, data: D | dict[str, Any], schema: type[D]) -> D:
         """Create validated dataclass instance from dictionary.
 
@@ -105,4 +106,7 @@ class Validator(Protocol[D]):
         >>> instance = validator.from_dict(schema, data)
 
         """
-        ...
+        self.validate(data, schema)
+        if is_dataclass(data):
+            return data
+        return dataclass_from_dict(schema, data)
