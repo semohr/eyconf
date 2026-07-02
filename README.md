@@ -5,7 +5,6 @@
     <em><b>E</b>asy <b>Y</B>aml based <b>Conf</b>iguration for Python</em>
 </p>
 
-
 <p align="center">
      <a href="https://pypi.org/project/eyconf/">
         <img alt="PyPI - Version" src="https://img.shields.io/pypi/v/eyconf?style=flat-square">
