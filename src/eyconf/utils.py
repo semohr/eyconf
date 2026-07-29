@@ -112,7 +112,7 @@ def _dataclass_from_dict_inner(target_type: type, data: Any) -> Any:
         try:
             res = target_type(**found_fields)  # type: ignore[bad-instantiation]
             if len(additional_fields) > 0:
-                log.warning(
+                log.info(
                     f"Additional fields {list(additional_fields.keys())} "
                     f"found for dataclass {target_type.__name__} but "
                     "not in schema and will be ignored."

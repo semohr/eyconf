@@ -4,7 +4,7 @@ authors = [
     { name = "F. Paul Spitzner", email = "github@makeitso.one" },
 ]
 name = "eyconf"
-version = "0.7.0"
+version = "0.7.1"
 description = "Easy Yaml based Configuration for Python"
 readme = "README.md"
 requires-python = ">=3.10"
