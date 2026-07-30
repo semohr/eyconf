@@ -4,13 +4,31 @@ All notable changes to this project will be documented in this file.
 
 ## Upcoming
 
+### Changed
+
+- **Validation backends are now optional extras.** You must install the backend
+  you want explicitly:
+  ```bash
+  pip install eyconf[jsonschema]  # or
+  pip install eyconf[pydantic]
+  ```
+  Previously the jsonschema dependency was included by default. If you upgrade
+  and validation stops working, install one of the extras above.
+
 ### Added
 
-- Added pydantic backend for validation.
+- Added **Pydantic v2** as a validation backend (`PydanticValidator`). Supports
+  full schema generation, runtime validation, the `allow_additional` option,
+  and the `__allow_additional` ClassVar marker for per-type overrides.
+- Added `get_validator()` helper to explicitly select a backend by name
+  (`"pydantic"` or `"jsonschema"`).
+- Backends are now **auto-detected**: if you don't specify one, EYConf picks
+  the best available (Pydantic first, then JsonSchema).
 
 ### Other
 
-- Validation tests are now backend agnostic.
+- Validation tests are now backend agnostic and run against all installed
+  backends.
 
 ## [0.7.0]
 

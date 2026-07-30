@@ -5,7 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import pytest
-from pydantic import TypeAdapter, ValidationError
+
+try:
+    from pydantic import TypeAdapter, ValidationError
+
+except ImportError:
+    pytest.skip("Pydantic is not installed, skipping tests.", allow_module_level=True)
 
 from eyconf.validation.backends.pydantic import to_ConfigurationError
 from eyconf.validation.exceptions import ConfigurationError, MultiConfigurationError

@@ -1,4 +1,5 @@
 import logging
+from dataclasses import is_dataclass
 from enum import Enum
 from functools import cache
 from typing import Any
@@ -8,6 +9,7 @@ from pydantic.config import ConfigDict
 from pydantic.json_schema import GenerateJsonSchema, JsonSchemaValue
 from pydantic_core import core_schema
 
+from eyconf.asdict import asdict_with_aliases
 from eyconf.decorators import marked_as_allow_additional
 from eyconf.type_utils import iter_dataclass_type
 from eyconf.validation.exceptions import ConfigurationError, MultiConfigurationError
@@ -44,6 +46,7 @@ class PydanticValidator(Validator[D]):
         self.allow_additional = allow_additional
 
     @staticmethod
+    @cache
     def _configure_types(schema: type[D], default_allow: bool) -> None:
         """Walk nested dataclass types and apply ``__allow_additional`` marker configs.
 
@@ -125,8 +128,17 @@ class PydanticValidator(Validator[D]):
         """
         self._configure_types(schema, self.allow_additional)
         adapter = self._adapter(schema, self.allow_additional)
+        # Pydantic's validate_python skips validation when data is already an
+        # instance of the schema type.  Convert to dict so fields are re-checked.
+        # Use asdict_with_aliases so that field aliases are preserved in the
+        # dict keys (Pydantic expects alias names, not Python attribute names).
+        payload: dict[str, Any] | D = (
+            asdict_with_aliases(data)
+            if is_dataclass(data) and not isinstance(data, type)
+            else data  # type: ignore[arg-type]
+        )
         try:
-            adapter.validate_python(data)
+            adapter.validate_python(payload)
         except ValidationError as e:
             raise to_ConfigurationError(e)
 
@@ -288,11 +300,25 @@ def to_ConfigurationError(
     else:
         raw_errors = error.errors()
 
-    # Convert each to a ConfigurationError
+    # Convert each to a ConfigurationError, mapping Pydantic error types
+    # to user-friendly messages that match the JsonSchema backend style.
+    _MESSAGE_TEMPLATES: dict[str, str] = {
+        "unexpected_keyword_argument": "Additional properties are not allowed ('{field}' was unexpected)",
+        "missing": "'{field}' is a required property",
+    }
     config_errors: list[ConfigurationError] = []
     for e in raw_errors:
         path = ".".join(str(p) for p in e["loc"])
-        config_errors.append(ConfigurationError(e["msg"], path if path else None))
+        field = e["loc"][-1] if e["loc"] else ""
+        template = _MESSAGE_TEMPLATES.get(e["type"])
+        if template is not None:
+            msg = template.format(field=field)
+            # Field name is already in the message; no separate section needed.
+            section = None
+        else:
+            msg = e["msg"]
+            section = path if path else None
+        config_errors.append(ConfigurationError(msg, section))
 
     if len(config_errors) == 1:
         return config_errors[0]

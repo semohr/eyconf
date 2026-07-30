@@ -22,7 +22,7 @@ from eyconf.generate_yaml import dataclass_to_yaml
 from eyconf.utils import (
     merge_dicts,
 )
-from eyconf.validation.backends.interface import Validator
+from eyconf.validation.backends import Validator
 
 from .base import Config
 
