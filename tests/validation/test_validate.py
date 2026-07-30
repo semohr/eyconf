@@ -497,10 +497,6 @@ class TestToJsonSchema:
         if is_typeddict(Schema):
             return pytest.skip("TODO")
 
-        # The __allow_additional marker is a json_schema-specific feature
-        if validator_config.backend == "pydantic":
-            return pytest.skip("__allow_additional is json_schema-specific")
-
         schema = validator.to_json_schema(Schema)
 
         assert schema["additionalProperties"] is True
@@ -518,14 +514,18 @@ class TestToJsonSchema:
         if is_typeddict(Schema):
             return pytest.skip("TODO")
 
-        # The __allow_additional marker is a json_schema-specific feature
-        if validator_config.backend == "pydantic":
-            return pytest.skip("__allow_additional is json_schema-specific")
-
         schema = validator.to_json_schema(Schema)
 
         assert schema["additionalProperties"] is False
-        assert schema["properties"]["bar"]["additionalProperties"] is True
+
+        # Pydantic uses $ref for nested types; json_schema inlines them.
+        bar_schema = schema["properties"]["bar"]
+        if "$ref" in bar_schema:
+            # Resolve the $ref from $defs
+            ref_key = bar_schema["$ref"].split("/")[-1]
+            bar_schema = schema["$defs"][ref_key]
+
+        assert bar_schema["additionalProperties"] is True
 
     # ------------------------------------------------------------------ #
     # Literal in union

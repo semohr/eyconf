@@ -8,6 +8,8 @@ from pydantic.config import ConfigDict
 from pydantic.json_schema import GenerateJsonSchema, JsonSchemaValue
 from pydantic_core import core_schema
 
+from eyconf.decorators import marked_as_allow_additional
+from eyconf.type_utils import iter_dataclass_type
 from eyconf.validation.exceptions import ConfigurationError, MultiConfigurationError
 
 from .interface import D, JsonSchema, Validator
@@ -42,14 +44,40 @@ class PydanticValidator(Validator[D]):
         self.allow_additional = allow_additional
 
     @staticmethod
+    def _configure_types(schema: type[D], default_allow: bool) -> None:
+        """Walk nested dataclass types and apply ``__allow_additional`` marker configs.
+
+        Sets ``__pydantic_config__`` on every nested dataclass type found in
+        the schema tree so that Pydantic respects per-type extra-field policies
+        during both schema generation and validation.
+
+        A type's ``__allow_additional`` ClassVar marker takes precedence over
+        ``default_allow``.  Types without a marker inherit ``default_allow``.
+        """
+        for nested_type in iter_dataclass_type(schema):
+            marker = marked_as_allow_additional(nested_type)
+            effective = marker if marker is not None else default_allow
+            setattr(
+                nested_type,
+                "__pydantic_config__",
+                ConfigDict(extra="allow" if effective else "forbid"),
+            )
+
+    @staticmethod
     @cache
-    def _adapter(schema: type[D], allow_additional: bool):
-        # https://pydantic.dev/docs/validation/latest/errors/usage_errors/#type-adapter-config-unused
-        setattr(
-            schema,
-            "__pydantic_config__",
-            ConfigDict(extra="allow" if allow_additional else "forbid"),
-        )
+    def _adapter(schema: type[D], allow_additional: bool) -> TypeAdapter[D]:
+        """Return a cached :class:`pydantic.TypeAdapter` for *schema*.
+
+        *allow_additional* is included in the cache key so that adapters for
+        the same schema with different global extra-field policies are not
+        conflated.
+
+        .. note::
+
+            The type's ``__pydantic_config__`` must already be set (e.g. via
+            :meth:`_configure_types`) before the first call, because Pydantic
+            reads the config at :class:`TypeAdapter` creation time.
+        """
         return TypeAdapter(schema)
 
     @cache
@@ -68,6 +96,7 @@ class PydanticValidator(Validator[D]):
         JsonSchema
             JSON Schema dictionary representing the type.
         """
+        self._configure_types(schema, self.allow_additional)
         return self._adapter(schema, self.allow_additional).json_schema(
             schema_generator=CustomGenerateJsonSchema,
         )
@@ -91,8 +120,10 @@ class PydanticValidator(Validator[D]):
         Notes
         -----
         Validation is performed via :meth:`pydantic.TypeAdapter.validate_python`.
-        Extra fields are rejected unless ``allow_additional`` was set at init.
+        Extra fields are rejected unless ``allow_additional`` was set at init
+        or the schema carries a ``__allow_additional`` marker.
         """
+        self._configure_types(schema, self.allow_additional)
         adapter = self._adapter(schema, self.allow_additional)
         try:
             adapter.validate_python(data)
@@ -123,6 +154,7 @@ class PydanticValidator(Validator[D]):
         ConfigurationError
             If validation or construction fails.
         """
+        self._configure_types(schema, self.allow_additional)
         adapter = self._adapter(schema, self.allow_additional)
         try:
             return adapter.validate_python(data)
