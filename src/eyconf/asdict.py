@@ -6,8 +6,10 @@ import copy
 import logging
 import types
 from dataclasses import fields
+from functools import lru_cache
 from typing import (
     TYPE_CHECKING,
+    Any,
     TypeVar,
 )
 
@@ -17,6 +19,12 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 D = TypeVar("D", bound="DataclassInstance")
+
+
+@lru_cache(maxsize=256)
+def _type_has_aliases(cls: type) -> bool:
+    """Check if any field on *cls* carries an ``alias`` in its metadata."""
+    return any("alias" in f.metadata for f in fields(cls))
 
 
 def asdict_with_aliases(
@@ -79,21 +87,24 @@ def _asdict_inner(obj, **kwargs):
     if type(obj) in _ATOMIC_TYPES:
         return obj
     elif hasattr(type(obj), "__dataclass_fields__"):
-        # obj is dataclass
-        # fast path for the common case
-        if dict_factory is dict:
+        # obj is dataclass — use the fast dict path unless aliases are present.
+        has_aliases = _type_has_aliases(type(obj))  # type: ignore[arg-type]
+        effective_factory = dict_factory if has_aliases else dict
+        obj_fields = fields(obj)
+
+        if effective_factory is dict:
             result = {
-                f.name: _asdict_inner(getattr(obj, f.name), dict_factory=dict)
-                for f in fields(obj)
+                f.name: _asdict_inner(getattr(obj, f.name), dict_factory=dict_factory)
+                for f in obj_fields
             }
         else:
             _result = []
-            for f in fields(obj):
+            for f in obj_fields:
                 value = _asdict_inner(getattr(obj, f.name), **kwargs)
                 _result.append((f.name, value))
             result = dict_factory(obj, _result)
 
-        field_names = {f.name for f in fields(obj)}
+        field_names = {f.name for f in obj_fields}
         extra_attrs = {}
         if include_attributes:
             for k, v in obj.__dict__.items():
@@ -170,12 +181,17 @@ def _asdict_inner(obj, **kwargs):
 
 
 def _alias_dict_factory(obj, items):
-    result = {}
+    """Replace field names with their aliases.
+
+    Operates in O(N) by building a name→field lookup once per call instead
+    of scanning all fields for each key (O(N²)).
+    """
+    field_by_name = {f.name: f for f in fields(obj)}
+    result: dict[str, Any] = {}
     for key, value in items:
-        # Find the field object for this key
-        field_obj = next((f for f in fields(obj) if f.name == key), None)
-        if field_obj and "alias" in field_obj.metadata:
-            result[field_obj.metadata["alias"]] = value
+        f = field_by_name.get(key)
+        if f is not None and "alias" in f.metadata:
+            result[f.metadata["alias"]] = value
         else:
             result[key] = value
     return result

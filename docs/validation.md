@@ -47,14 +47,21 @@ generation.
 
 ### Quick Comparison
 
-| Feature                         | JsonSchema   | Pydantic           |
-| ------------------------------- | ------------ | ------------------ |
-| **Dependency**                  | `jsonschema` | `pydantic` (heavy) |
-| **Validation speed**            | Good         | Good               |
-| **Schema output style**         | Inline       | `$ref`-based       |
-| **`__allow_additional` marker** | Yes          | Yes                |
-| **Error detail**                | Good         | Rich               |
-| **Maturity in EYConf**          | Most tested  | Well tested        |
+| Feature                          | JsonSchema   | Pydantic           |
+| -------------------------------- | ------------ | ------------------ |
+| **Dependency**                   | `jsonschema` | `pydantic` (heavy) |
+| **validate (dict)**¹             | 231 ± 23 µs  | 6.3 ± 1.6 µs       |
+| **validate (instance)**¹         | 278 ± 15 µs  | 27 ± 4 µs          |
+| **validate + construct (dict)**¹ | 661 ± 53 µs  | 5.5 ± 0.8 µs       |
+| **Schema output style**          | Inline       | `$ref`-based       |
+| **`__allow_additional` marker**  | Yes          | Yes                |
+| **Error detail**                 | Good         | Rich               |
+| **Maturity in EYConf**           | Most tested  | Well tested        |
+
+¹ Rough estimates for a config with 4 nested dataclasses (~25 fields).
+Run `python benchmarks/validation.py` for up-to-date numbers on your
+machine. Pydantic is faster across the board because it validates and
+constructs in a single pass (Rust-powered core).
 
 ## Choosing a Backend
 
