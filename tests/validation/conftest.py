@@ -363,6 +363,8 @@ def validator(validator_config):
 
         return JsonSchemaValidator(allow_additional=allow_additional)
 
+    raise ValueError(f"Unknown validation backend: {backend!r}")
+
 
 @pytest.fixture(params=["dataclass", "typeddict"], ids=["dataclass", "typeddict"])
 def Schema(request, schema_cls):
