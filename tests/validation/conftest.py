@@ -363,12 +363,16 @@ def validator(validator_config):
     backend, allow_additional = validator_config
 
     if backend == "json_schema":
-        from eyconf.validation.backends.json_schema import JsonSchemaValidator
-
+        try:
+            from eyconf.validation.backends.json_schema import JsonSchemaValidator
+        except ImportError:
+            pytest.skip("jsonschema not installed; skipping jsonschema tests")
         return JsonSchemaValidator(allow_additional=allow_additional)
     if backend == "pydantic":
-        from eyconf.validation.backends.pydantic import PydanticValidator
-
+        try:
+            from eyconf.validation.backends.pydantic import PydanticValidator
+        except ImportError:
+            pytest.skip("Pydantic not installed; skipping pydantic tests")
         return PydanticValidator(allow_additional=allow_additional)
 
     raise ValueError(f"Unknown validation backend: {backend!r}")
