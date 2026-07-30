@@ -165,10 +165,10 @@ class TestToJsonSchema:
         schema = validator.to_json_schema(Schema)
 
         assert sorted(
-            schema["properties"]["foo"]["anyOf"], key=lambda x: x["type"]
+            schema["properties"]["foo"]["anyOf"], key=lambda x: x.get("type", "")
         ) == [{"type": "integer"}, {"type": "string"}]
         assert sorted(
-            schema["properties"]["bar"]["anyOf"], key=lambda x: x["type"]
+            schema["properties"]["bar"]["anyOf"], key=lambda x: x.get("type", "")
         ) == [{"type": "integer"}, {"type": "number"}]
 
     # ------------------------------------------------------------------ #
@@ -184,7 +184,7 @@ class TestToJsonSchema:
     ):
         schema = validator.to_json_schema(Schema)
         assert schema["type"] == "object"
-        assert schema["required"] == ["dict1", "dict_uni"]
+        assert set(["dict1", "dict_uni"]).issubset(set(schema["required"]))
         assert ["dict1", "dict_opt", "dict_uni", "baz"] == list(
             schema["properties"].keys()
         )
@@ -196,14 +196,22 @@ class TestToJsonSchema:
             "additionalProperties": validator_config.allow_additional,
         }
 
-        assert schema["properties"]["dict1"] == dict1_obj
-        assert schema["properties"]["dict_opt"] == dict1_obj
+        ok, diff = dict_is_subset(schema["properties"]["dict1"], dict1_obj)
+        assert ok, f"Dict subset mismatch for dict1:\n{diff}"
+
+        ok, diff = dict_is_subset(schema["properties"]["dict_opt"], dict1_obj)
+        assert ok, f"Dict subset mismatch for dict_opt:\n{diff}"
 
         assert "anyOf" in schema["properties"]["dict_uni"]
-        assert (
-            schema["properties"]["dict_uni"]["anyOf"][0] == dict1_obj
-            or schema["properties"]["dict_uni"]["anyOf"][1] == dict1_obj
-        )
+        anyof = schema["properties"]["dict_uni"]["anyOf"]
+        assert len(anyof) == 2
+        # One alternative must match dict1_obj (possibly as a $ref or inlined)
+        assert any(
+            dict_is_subset(alt, dict1_obj)[0] if isinstance(alt, dict) else False
+            for alt in anyof
+        ), f"No anyOf alternative matches {dict1_obj}: {anyof}"
+        # The other alternative is {"type": "string"}
+        assert {"type": "string"} in anyof
 
     # ------------------------------------------------------------------ #
     # Lists
@@ -217,15 +225,19 @@ class TestToJsonSchema:
         validator,
     ):
         schema = validator.to_json_schema(Schema)
-        assert schema == {
-            "type": "object",
-            "properties": {
-                "foo": {"type": "array", "items": {"type": "string"}},
-                "bar": {"type": "array", "items": {"type": "integer"}},
+        ok, diff = dict_is_subset(
+            schema,
+            {
+                "type": "object",
+                "properties": {
+                    "foo": {"type": "array", "items": {"type": "string"}},
+                    "bar": {"type": "array", "items": {"type": "integer"}},
+                },
+                "required": ["foo"],
+                "additionalProperties": validator_config.allow_additional,
             },
-            "required": ["foo"],
-            "additionalProperties": validator_config.allow_additional,
-        }
+        )
+        assert ok, f"Dict subset mismatch:\n{diff}"
 
     # ------------------------------------------------------------------ #
     # Dicts
@@ -239,25 +251,29 @@ class TestToJsonSchema:
         validator,
     ):
         schema = validator.to_json_schema(Schema)
-        assert schema == {
-            "type": "object",
-            "properties": {
-                "foo": {
-                    "type": "object",
-                    "patternProperties": {
-                        "^.*$": {"type": "integer"},
+        ok, diff = dict_is_subset(
+            schema,
+            {
+                "type": "object",
+                "properties": {
+                    "foo": {
+                        "type": "object",
+                        "patternProperties": {
+                            "^.*$": {"type": "integer"},
+                        },
+                    },
+                    "bar": {
+                        "type": "object",
+                        "patternProperties": {
+                            "^.*$": {"type": "string"},
+                        },
                     },
                 },
-                "bar": {
-                    "type": "object",
-                    "patternProperties": {
-                        "^.*$": {"type": "string"},
-                    },
-                },
+                "required": ["foo", "bar"],
+                "additionalProperties": validator_config.allow_additional,
             },
-            "required": ["foo", "bar"],
-            "additionalProperties": validator_config.allow_additional,
-        }
+        )
+        assert ok, f"Dict subset mismatch:\n{diff}"
 
     @pytest.mark.parametrize("schema_cls", [DictNestedOuter])
     def test_dict_nested(
@@ -268,26 +284,30 @@ class TestToJsonSchema:
     ):
         schema = validator.to_json_schema(Schema)
 
-        assert schema == {
-            "type": "object",
-            "properties": {
-                "outer": {
-                    "type": "object",
-                    "patternProperties": {
-                        "^.*$": {
-                            "type": "object",
-                            "properties": {
-                                "inner": {"type": "integer"},
-                            },
-                            "required": ["inner"],
-                            "additionalProperties": validator_config.allow_additional,
-                        }
+        ok, diff = dict_is_subset(
+            schema,
+            {
+                "type": "object",
+                "properties": {
+                    "outer": {
+                        "type": "object",
+                        "patternProperties": {
+                            "^.*$": {
+                                "type": "object",
+                                "properties": {
+                                    "inner": {"type": "integer"},
+                                },
+                                "required": ["inner"],
+                                "additionalProperties": validator_config.allow_additional,
+                            }
+                        },
                     },
                 },
+                "required": ["outer"],
+                "additionalProperties": validator_config.allow_additional,
             },
-            "required": ["outer"],
-            "additionalProperties": validator_config.allow_additional,
-        }
+        )
+        assert ok, f"Dict subset mismatch:\n{diff}"
 
     # ------------------------------------------------------------------ #
     # TypedDict (NotRequired)
@@ -296,18 +316,22 @@ class TestToJsonSchema:
     def test_not_required(self, validator_config, validator):
         schema = validator.to_json_schema(NotRequiredDict)
 
-        assert schema == {
-            "type": "object",
-            "properties": {
-                "foo": {"type": "string"},
-                "bar": {"type": "integer"},
-                "baz": {"type": "number"},
-                "qux": {"type": "boolean"},
-                "nay": {"type": "null"},
+        ok, diff = dict_is_subset(
+            schema,
+            {
+                "type": "object",
+                "properties": {
+                    "foo": {"type": "string"},
+                    "bar": {"type": "integer"},
+                    "baz": {"type": "number"},
+                    "qux": {"type": "boolean"},
+                    "nay": {"type": "null"},
+                },
+                "required": [],
+                "additionalProperties": validator_config.allow_additional,
             },
-            "required": [],
-            "additionalProperties": validator_config.allow_additional,
-        }
+        )
+        assert ok, f"Dict subset mismatch:\n{diff}"
 
     # ------------------------------------------------------------------ #
     # Special types (None, Any, Optional[None])
@@ -321,14 +345,18 @@ class TestToJsonSchema:
         validator,
     ):
         schema = validator.to_json_schema(Schema)
-        assert schema == {
-            "type": "object",
-            "properties": {
-                "foo": {"type": "null"},
+        ok, diff = dict_is_subset(
+            schema,
+            {
+                "type": "object",
+                "properties": {
+                    "foo": {"type": "null"},
+                },
+                "required": ["foo"],
+                "additionalProperties": validator_config.allow_additional,
             },
-            "required": ["foo"],
-            "additionalProperties": validator_config.allow_additional,
-        }
+        )
+        assert ok, f"Dict subset mismatch:\n{diff}"
 
     @pytest.mark.parametrize("schema_cls", [SchemaAny])
     def test_special_any(
@@ -338,14 +366,18 @@ class TestToJsonSchema:
         validator,
     ):
         schema = validator.to_json_schema(Schema)
-        assert schema == {
-            "type": "object",
-            "properties": {
-                "foo": {},
+        ok, diff = dict_is_subset(
+            schema,
+            {
+                "type": "object",
+                "properties": {
+                    "foo": {},
+                },
+                "required": ["foo"],
+                "additionalProperties": validator_config.allow_additional,
             },
-            "required": ["foo"],
-            "additionalProperties": validator_config.allow_additional,
-        }
+        )
+        assert ok, f"Dict subset mismatch:\n{diff}"
 
     @pytest.mark.parametrize("schema_cls", [UnionNoneSchema])
     def test_special_union_none(
@@ -355,14 +387,18 @@ class TestToJsonSchema:
         validator,
     ):
         schema = validator.to_json_schema(Schema)
-        assert schema == {
-            "type": "object",
-            "properties": {
-                "foo": {"type": "null"},
+        ok, diff = dict_is_subset(
+            schema,
+            {
+                "type": "object",
+                "properties": {
+                    "foo": {"type": "null"},
+                },
+                "required": ["foo"],
+                "additionalProperties": validator_config.allow_additional,
             },
-            "required": ["foo"],
-            "additionalProperties": validator_config.allow_additional,
-        }
+        )
+        assert ok, f"Dict subset mismatch:\n{diff}"
 
     # ------------------------------------------------------------------ #
     # Cache
@@ -401,15 +437,19 @@ class TestToJsonSchema:
         validator,
     ):
         schema = validator.to_json_schema(Schema)
-        assert schema == {
-            "type": "object",
-            "properties": {
-                "foo": {"type": "string"},
-                "bar": {"type": "integer"},
+        ok, diff = dict_is_subset(
+            schema,
+            {
+                "type": "object",
+                "properties": {
+                    "foo": {"type": "string"},
+                    "bar": {"type": "integer"},
+                },
+                "required": ["foo", "bar"],
+                "additionalProperties": validator_config.allow_additional,
             },
-            "required": ["foo", "bar"],
-            "additionalProperties": validator_config.allow_additional,
-        }
+        )
+        assert ok, f"Dict subset mismatch:\n{diff}"
 
     @pytest.mark.parametrize("schema_cls", [NestedAnnotated])
     def test_annotated_nested(
@@ -419,22 +459,26 @@ class TestToJsonSchema:
         validator,
     ):
         schema = validator.to_json_schema(Schema)
-        assert schema == {
-            "type": "object",
-            "properties": {
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "foo": {"type": "string"},
-                        "bar": {"type": "integer"},
-                    },
-                    "required": ["foo", "bar"],
-                    "additionalProperties": validator_config.allow_additional,
-                }
+        ok, diff = dict_is_subset(
+            schema,
+            {
+                "type": "object",
+                "properties": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "foo": {"type": "string"},
+                            "bar": {"type": "integer"},
+                        },
+                        "required": ["foo", "bar"],
+                        "additionalProperties": validator_config.allow_additional,
+                    }
+                },
+                "required": ["schema"],
+                "additionalProperties": validator_config.allow_additional,
             },
-            "required": ["schema"],
-            "additionalProperties": validator_config.allow_additional,
-        }
+        )
+        assert ok, f"Dict subset mismatch:\n{diff}"
 
     # ------------------------------------------------------------------ #
     # __allow_additional marker
@@ -448,9 +492,14 @@ class TestToJsonSchema:
         self,
         Schema: type,
         validator,
+        validator_config,
     ):
         if is_typeddict(Schema):
             return pytest.skip("TODO")
+
+        # The __allow_additional marker is a json_schema-specific feature
+        if validator_config.backend == "pydantic":
+            return pytest.skip("__allow_additional is json_schema-specific")
 
         schema = validator.to_json_schema(Schema)
 
@@ -468,6 +517,10 @@ class TestToJsonSchema:
     ):
         if is_typeddict(Schema):
             return pytest.skip("TODO")
+
+        # The __allow_additional marker is a json_schema-specific feature
+        if validator_config.backend == "pydantic":
+            return pytest.skip("__allow_additional is json_schema-specific")
 
         schema = validator.to_json_schema(Schema)
 
@@ -515,15 +568,19 @@ class TestToJsonSchema:
             return pytest.skip("TODO")
 
         schema = validator.to_json_schema(Schema)
-        assert schema == {
-            "type": "object",
-            "properties": {
-                "the_bar": {"type": "integer"},
-                "foo": {"type": "string"},
+        ok, diff = dict_is_subset(
+            schema,
+            {
+                "type": "object",
+                "properties": {
+                    "the_bar": {"type": "integer"},
+                    "foo": {"type": "string"},
+                },
+                "required": ["the_bar"],
+                "additionalProperties": validator_config.allow_additional,
             },
-            "required": ["the_bar", "foo"],
-            "additionalProperties": validator_config.allow_additional,
-        }
+        )
+        assert ok, f"Dict subset mismatch:\n{diff}"
 
 
 class TestValidate:

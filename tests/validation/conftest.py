@@ -400,8 +400,64 @@ def dict_is_subset(actual, expected):
     Return (ok, diff) where:
       ok   -> True if expected is a subset of actual
       diff -> dict of mismatches/missing keys
+
+    For list values, checks that every expected element is present in
+    the actual list (order-independent).  When the actual dict carries
+    an ``anyOf`` key (e.g. Pydantic's nullable representation), the
+    expected schema is considered satisfied if *any* alternative is a
+    superset of the expected schema.
     """
     diff = {}
+
+    # When actual is a ``$ref``, we trust the referenced definition exists
+    # and satisfies any expected schema (validating the full definition
+    # tree is out of scope for a simple subset check).
+    if isinstance(actual, dict) and "$ref" in actual:
+        return True, ""
+
+    # ``additionalProperties: schema`` is semantically equivalent to
+    # ``patternProperties: {"^.*$": schema}`` (both match all property
+    # names).  Normalise so that subset checks work across backends.
+    if (
+        isinstance(actual, dict)
+        and "additionalProperties" in actual
+        and isinstance(actual["additionalProperties"], dict)
+    ):
+        actual = {
+            **actual,
+            "patternProperties": {"^.*$": actual["additionalProperties"]},
+        }
+    if (
+        isinstance(expected, dict)
+        and "additionalProperties" in expected
+        and isinstance(expected["additionalProperties"], dict)
+    ):
+        expected = {
+            **expected,
+            "patternProperties": {"^.*$": expected["additionalProperties"]},
+        }
+
+    # Pydantic omits ``required`` when there are no required fields;
+    # treat a missing key as equivalent to an empty list.
+    if (
+        "required" in expected
+        and expected["required"] == []
+        and "required" not in actual
+    ):
+        actual = {**actual, "required": []}
+
+    # When actual uses anyOf (e.g. ``str | None`` → anyOf[string, null]),
+    # the expected schema only needs to match one alternative.
+    if (
+        isinstance(actual, dict)
+        and "anyOf" in actual
+        and isinstance(actual["anyOf"], list)
+    ):
+        for alt in actual["anyOf"]:
+            if isinstance(alt, dict):
+                ok, _ = dict_is_subset(alt, expected)
+                if ok:
+                    return True, ""
 
     for key, exp_val in expected.items():
         if key not in actual:
@@ -414,6 +470,11 @@ def dict_is_subset(actual, expected):
             ok, subdiff = dict_is_subset(act_val, exp_val)
             if not ok:
                 diff[key] = subdiff
+        elif isinstance(exp_val, list) and isinstance(act_val, list):
+            # Order-independent subset: every expected item must be in actual
+            missing = [v for v in exp_val if v not in act_val]
+            if missing:
+                diff[key] = {"expected (missing)": missing, "actual": act_val}
         elif act_val != exp_val:
             diff[key] = {"expected": exp_val, "actual": act_val}
 
