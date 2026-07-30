@@ -583,10 +583,9 @@ wheels = [
 
 [[package]]
 name = "eyconf"
-version = "0.7.1"
+version = "0.8.0"
 source = { editable = "." }
 dependencies = [
-    { name = "jsonschema" },
     { name = "pyyaml" },
     { name = "typing-extensions" },
 ]
@@ -595,13 +594,16 @@ dependencies = [
 cli = [
     { name = "typer" },
 ]
+jsonschema = [
+    { name = "jsonschema" },
+]
 pydantic = [
     { name = "pydantic" },
 ]
 
 [package.dev-dependencies]
 dev = [
-    { name = "eyconf", extra = ["cli"] },
+    { name = "eyconf" },
     { name = "furo" },
     { name = "mypy" },
     { name = "myst-nb" },
@@ -651,17 +653,17 @@ typed = [
 
 [package.metadata]
 requires-dist = [
-    { name = "jsonschema" },
+    { name = "jsonschema", marker = "extra == 'jsonschema'", specifier = ">=4.26.0" },
     { name = "pydantic", marker = "extra == 'pydantic'", specifier = ">=2.0.0" },
     { name = "pyyaml" },
     { name = "typer", marker = "extra == 'cli'" },
     { name = "typing-extensions" },
 ]
-provides-extras = ["cli", "pydantic"]
+provides-extras = ["cli", "pydantic", "jsonschema"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "eyconf", extras = ["cli"] },
+    { name = "eyconf" },
     { name = "furo", specifier = ">=2024.8.6" },
     { name = "mypy", specifier = ">=1.19.1" },
     { name = "myst-nb", specifier = ">=1.1.2" },
