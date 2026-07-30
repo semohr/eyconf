@@ -17,7 +17,7 @@ from eyconf.utils import (
     merge_dicts,
     metadata_fields_from_dataclass,
 )
-from eyconf.validation.backends.json_schema import JsonSchemaValidator
+from eyconf.validation.backends import get_validator
 
 from .base import Config
 
@@ -191,7 +191,7 @@ class ConfigExtra(Config[D]):
                     f"{getattr(s, '__allow_additional')}."
                 )
 
-        super().__init__(data, schema, JsonSchemaValidator(True))
+        super().__init__(data, schema, get_validator(None, True))
         self._extra_data = dict()
         self._access_proxy = AccessProxy(
             data=self._data,

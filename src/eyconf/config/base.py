@@ -24,8 +24,7 @@ from eyconf.type_utils import (
     is_dataclass_type,
 )
 from eyconf.utils import dataclass_from_dict, dict_items_resolve_aliases
-from eyconf.validation.backends.interface import Validator
-from eyconf.validation.backends.json_schema import JsonSchemaValidator
+from eyconf.validation.backends import Validator, get_validator
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -69,9 +68,8 @@ class Config(Generic[D]):
                 )
             self._schema = type(data)
 
-        # Validator
         if validator is None:
-            self._validator = JsonSchemaValidator()
+            self._validator = get_validator()
         else:
             self._validator = validator
 
