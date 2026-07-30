@@ -1,10 +1,12 @@
 import logging
+from enum import Enum
 from functools import cache
 from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
 from pydantic.config import ConfigDict
-from pydantic.json_schema import GenerateJsonSchema
+from pydantic.json_schema import GenerateJsonSchema, JsonSchemaValue
+from pydantic_core import core_schema
 
 from eyconf.validation.exceptions import ConfigurationError, MultiConfigurationError
 
@@ -54,7 +56,28 @@ class PydanticValidator(Validator[D]):
 
 
 class CustomGenerateJsonSchema(GenerateJsonSchema):
-    pass
+    """
+    Allows to customize the JSON Schema generation process. We do this to unify the behavior of Pydantic with our other validation backends, and to raise errors for unsupported types (like bytes).
+
+    See https://pydantic.dev/docs/validation/latest/concepts/json_schema/#customizing-the-json-schema-generation-process
+    """
+
+    def bytes_schema(self, schema: core_schema.BytesSchema) -> JsonSchemaValue:
+        raise ValueError(
+            "Bytes fields are not supported in JSON Schema / OpenAPI. "
+            "The 'bytes' type cannot be consistently represented."
+        )
+
+    def literal_schema(self, schema: core_schema.LiteralSchema) -> JsonSchemaValue:
+        for v in schema["expected"]:
+            # Enum values wrap in the enum type; extract the raw value for the check
+            inner = v.value if isinstance(v, Enum) else v
+            if isinstance(inner, bytes):
+                raise ValueError(
+                    "Bytes literals are not supported in JSON Schema / OpenAPI. "
+                    "Literal bytes values cannot be consistently represented."
+                )
+        return super().literal_schema(schema)
 
 
 def to_ConfigurationError(
