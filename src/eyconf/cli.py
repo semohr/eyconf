@@ -25,7 +25,7 @@ from rich.text import Text
 from yaml import YAMLError
 
 from eyconf import EYConf
-from eyconf.validation import MultiConfigurationError
+from eyconf.validation import ConfigurationError, MultiConfigurationError
 
 
 def create_config_cli(
@@ -210,6 +210,9 @@ def human_readable_validation():
     except MultiConfigurationError as e:
         for error in e.errors:
             typer.echo(f"- {error}")
+        raise typer.Exit(1)
+    except ConfigurationError as e:
+        typer.echo(f"{e}")
         raise typer.Exit(1)
     except YAMLError as e:
         typer.echo("Invalid YAML file!")

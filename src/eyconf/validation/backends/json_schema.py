@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Sequence
-from dataclasses import is_dataclass
+from dataclasses import MISSING, fields, is_dataclass
 from functools import cache
 from types import NoneType, UnionType
 from typing import (
@@ -200,6 +200,17 @@ class JsonSchemaValidator(Validator[D]):
             hints = get_type_hints_resolve_namespace(type_, include_extras=True)
             metadata = metadata_fields_from_dataclass(type_)
 
+            # Fields with defaults are not required.
+            fields_with_defaults: set[str]
+            if is_dataclass(type_):
+                fields_with_defaults = {
+                    f.name
+                    for f in fields(type_)
+                    if f.default is not MISSING or f.default_factory is not MISSING
+                }
+            else:
+                fields_with_defaults = set()
+
             for field, ftype in hints.items():
                 if get_origin(ftype) is ClassVar:
                     continue
@@ -208,7 +219,7 @@ class JsonSchemaValidator(Validator[D]):
 
                 prop_schema, prop_required = self._build_schema(ftype)
                 json_schema["properties"][field] = prop_schema
-                if prop_required:
+                if prop_required and field not in fields_with_defaults:
                     json_schema["required"].append(field)
 
             return json_schema, is_required
