@@ -234,6 +234,9 @@ def to_ConfigurationError(
     into the project's :class:`ConfigurationError` or
     :class:`MultiConfigurationError` for consistent error handling.
 
+    Each Pydantic error's ``loc`` tuple is joined with ``.`` to form the
+    :attr:`ConfigurationError.section`, and its ``msg`` becomes the message.
+
     Parameters
     ----------
     error : ValidationError | list[ValidationError]
@@ -242,6 +245,23 @@ def to_ConfigurationError(
     Returns
     -------
     ConfigurationError | MultiConfigurationError
-        The corresponding domain-level error(s).
+        A single :class:`ConfigurationError` when there is only one underlying
+        error, or a :class:`MultiConfigurationError` wrapping multiple errors.
     """
-    return ConfigurationError("TODO")
+    # Flatten all errors into a single list of Pydantic error dicts
+    raw_errors: list[Any] = []
+    if isinstance(error, list):
+        for e in error:
+            raw_errors.extend(e.errors())
+    else:
+        raw_errors = error.errors()
+
+    # Convert each to a ConfigurationError
+    config_errors: list[ConfigurationError] = []
+    for e in raw_errors:
+        path = ".".join(str(p) for p in e["loc"])
+        config_errors.append(ConfigurationError(e["msg"], path if path else None))
+
+    if len(config_errors) == 1:
+        return config_errors[0]
+    return MultiConfigurationError(config_errors)
