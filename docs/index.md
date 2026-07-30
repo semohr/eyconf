@@ -13,18 +13,17 @@ EyConf is a Python package that allows you to quickly create yaml based configur
 :end-before: <!-- end features -->
 ```
 
-
 ## Documentation
 
-```{toctree}    
+```{toctree}
 ---
 maxdepth: 1
 ---
 
 getting-started
 advanced-usage
+validation
 contribution
 faq
 references
 ```
-

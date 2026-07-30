@@ -23,24 +23,32 @@
     </a>
 </p>
 
-
 ## Why EYConf?
 
 <!-- start features -->
+
 - **Schema-First Configuration**: Define your config structure with Python dataclasses, get automatic YAML generation with comments
 - **Type-Safe Access**: Access nested configuration values with full IDE support and runtime type checking
 - **Validation First**: Catch configuration errors early with detailed, human-readable validation messages
 - **Zero Boilerplate**: No manual YAML parsing, no dictionary access - just clean attribute access to your configuration
+
 <!-- end features -->
 
 ## Installation
 
 <!-- start installation -->
+
 You can install EYConf from [PyPI](https://pypi.org/project/eyconf/) using pip.
 
+You can choose your validation backend by installing the corresponding extra:
+
 ```bash
-pip install eyconf
+pip install eyconf[jsonschema]
+pip install eyconf[pydantic]
 ```
+
+For more information on validation backends, please refer to the [documentation](https://eyconf.readthedocs.io/en/latest/validation.html).
+
 <!-- end installation -->
 
 ## Example Usage
@@ -72,6 +80,7 @@ This will create a `config.yaml` file in your current working directory with the
 database_url: sqlite:///app.db
 debug: false
 ```
+
 <!-- end usage -->
 
 Please refer to the [documentation](https://eyconf.readthedocs.io/en/latest/) for more examples and detailed usage instructions.
