@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Upcoming
 
+### Added
+
+- Added pydantic backend for validation.
+
 ### Other
 
 - Validation tests are now backend agnostic.
