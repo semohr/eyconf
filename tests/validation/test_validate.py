@@ -10,9 +10,20 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import is_typeddict
 
+
 from eyconf.validation import MultiConfigurationError
 from eyconf.validation.exceptions import ConfigurationError
 import pytest
+
+
+def _is_typeddict(obj: type) -> bool:
+    """Check if *obj* is a TypedDict, including :mod:`typing_extensions` variants.
+
+    :func:`typing.is_typeddict` does not recognise TypedDicts created via
+    :func:`typing_extensions.TypedDict` on some Python versions.
+    """
+    return is_typeddict(obj) or (isinstance(obj, type) and hasattr(obj, "__total__"))
+
 
 from .conftest import (
     AliasSchema,
@@ -494,7 +505,7 @@ class TestToJsonSchema:
         validator,
         validator_config,
     ):
-        if is_typeddict(Schema):
+        if _is_typeddict(Schema):
             return pytest.skip("TODO")
 
         schema = validator.to_json_schema(Schema)
@@ -511,7 +522,7 @@ class TestToJsonSchema:
         validator,
         validator_config,
     ):
-        if is_typeddict(Schema):
+        if _is_typeddict(Schema):
             return pytest.skip("TODO")
 
         schema = validator.to_json_schema(Schema)
@@ -564,7 +575,7 @@ class TestToJsonSchema:
         validator_config,
         validator,
     ):
-        if is_typeddict(Schema):
+        if _is_typeddict(Schema):
             return pytest.skip("TODO")
 
         schema = validator.to_json_schema(Schema)

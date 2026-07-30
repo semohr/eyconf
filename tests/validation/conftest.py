@@ -11,12 +11,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
 from pprint import pformat
-from typing import Annotated, Any, ClassVar, Literal, NamedTuple, TypedDict
+from typing import Annotated, Any, ClassVar, Literal, NamedTuple
 
 from eyconf.type_utils import get_type_hints_resolve_namespace
 import pytest
 
-from typing_extensions import NotRequired
+# TODO: switch back to `typing.TypedDict` once Pydantic accepts it on all
+# supported Python versions (currently required for dynamic TypedDict creation).
+from typing_extensions import NotRequired, TypedDict
 
 
 # ------------------------- Shared Dataclass Schemas ------------------------- #
