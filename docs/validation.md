@@ -7,26 +7,6 @@ between them requires only a one-line change.
 
 ## Available Backends
 
-### JsonSchemaValidator
-
-```python
-from eyconf.validation.backends.json_schema import JsonSchemaValidator
-
-validator = JsonSchemaValidator(allow_additional=False)
-```
-
-The **default and first** backend. It uses the
-[jsonschema](https://python-jsonschema.readthedocs.io/) library with
-**Draft 2020-12** for schema generation and validation.
-
-**Best for**
-
-- Projects where you want to minimise dependencies
-- When you need the most mature and tested backend
-- When inline (non-`$ref`) JSON Schema output is preferred
-
----
-
 ### PydanticValidator
 
 ```python
@@ -37,31 +17,55 @@ validator = PydanticValidator(allow_additional=False)
 
 Leverages [Pydantic v2](https://docs.pydantic.dev/)'s
 {py:class}`pydantic.TypeAdapter` for both runtime validation and JSON Schema
-generation.
+generation. Built on Pydantic's Rust-powered core, it is significantly faster
+than the JsonSchema backend.
 
 **Best for**
 
-- Projects already using Pydantic in their stack
-- When you prefer Pydantic's error message format
-- When `$ref`-based JSON Schema output is preferred
+- Most projects — it's the default for a reason
+- When you want the fastest validation and construction
+- When you prefer richer error messages and `$ref`-based JSON Schema output
+
+### JsonSchemaValidator
+
+```python
+from eyconf.validation.backends.json_schema import JsonSchemaValidator
+
+validator = JsonSchemaValidator(allow_additional=False)
+```
+
+A lightweight alternative that uses only the
+[jsonschema](https://python-jsonschema.readthedocs.io/) library with
+**Draft 2020-12** for schema generation and validation. No Pydantic
+dependency required.
+
+**Best for**
+
+- Projects where you want to minimise dependencies
+- When you need the most mature and tested backend
+- When inline (non-`$ref`) JSON Schema output is preferred
 
 ### Quick Comparison
 
-| Feature                          | JsonSchema   | Pydantic           |
-| -------------------------------- | ------------ | ------------------ |
-| **Dependency**                   | `jsonschema` | `pydantic` (heavy) |
-| **validate (dict)**¹             | 231 ± 23 µs  | 6.3 ± 1.6 µs       |
-| **validate (instance)**¹         | 278 ± 15 µs  | 27 ± 4 µs          |
-| **validate + construct (dict)**¹ | 661 ± 53 µs  | 5.5 ± 0.8 µs       |
-| **Schema output style**          | Inline       | `$ref`-based       |
-| **`__allow_additional` marker**  | Yes          | Yes                |
-| **Error detail**                 | Good         | Rich               |
-| **Maturity in EYConf**           | Most tested  | Well tested        |
+| Feature                          | Pydantic     | JsonSchema  |
+| -------------------------------- | ------------ | ----------- |
+| **Install size**²                | ~8 MB        | ~0.7 MB     |
+| **Cold import**²                 | ~50 ms       | ~65 ms      |
+| **validate (dict)**¹             | 4.8 ± 1.3 µs | 173 ± 6 µs  |
+| **validate (instance)**¹         | 23 ± 0.8 µs  | 201 ± 4 µs  |
+| **validate + construct (dict)**¹ | 4.4 ± 0.8 µs | 562 ± 23 µs |
+| **Schema output style**          | `$ref`-based | Inline      |
+| **`__allow_additional` marker**  | Yes          | Yes         |
+| **Error detail**                 | Rich         | Good        |
+| **Maturity in EYConf**           | Well tested  | Most tested |
 
 ¹ Rough estimates for a config with 4 nested dataclasses (~25 fields).
 Run `python benchmarks/validation.py` for up-to-date numbers on your
-machine. Pydantic is faster across the board because it validates and
-constructs in a single pass (Rust-powered core).
+machine.
+² Measured via `python benchmarks/validation.py`; install size is the
+on-disk footprint of the package and its direct Rust/C dependencies,
+cold import is a single `import` in a fresh subprocess. Might heavily
+depend on your platform and Python version.
 
 ## Choosing a Backend
 
@@ -100,9 +104,9 @@ config = Config(data, MySchema, validator=PydanticValidator(allow_additional=Tru
 otherwise JsonSchema. Both are well-tested and fully supported.
 :::
 
-- **Pydantic** — best if you already use Pydantic in your project, or prefer
-  richer error messages and `$ref`-based JSON Schema output.
-- **JsonSchema** — best if you want minimal dependencies (only `jsonschema`
+- **Pydantic** — best for most projects. Significantly faster,
+  richer error messages, and `$ref`-based JSON Schema output.
+- **JsonSchema** — best when you want minimal dependencies (only `jsonschema`
   is required) and prefer inline JSON Schema output.
 
 Switching later is a one-line change — all backends implement the same

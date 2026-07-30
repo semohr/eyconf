@@ -181,6 +181,51 @@ def bench_construct():
         )
 
 
+def bench_dependency_sizes():
+    """Measure on-disk size of each backend and its dependencies."""
+    import os
+    import subprocess
+
+    print("\nDependency sizes (approximate on-disk):")
+    for label, pkg_names in [
+        ("Pydantic", ["pydantic", "pydantic_core"]),
+        ("JsonSchema", ["jsonschema"]),
+    ]:
+        total = 0
+        for pkg_name in pkg_names:
+            try:
+                mod = __import__(pkg_name)
+                path = os.path.dirname(mod.__file__)
+                r = subprocess.run(["du", "-sb", path], capture_output=True, text=True)
+                total += int(r.stdout.split()[0])
+            except (ImportError, ValueError, IndexError):
+                pass
+        print(f"  {label:12s} ~{total / 1024 / 1024:.0f} MB")
+
+
+def bench_cold_import():
+    """Measure cold import time by spawning a subprocess."""
+    import subprocess
+
+    print("\nCold import times:")
+    for label, module in [
+        ("Pydantic", "pydantic"),
+        ("JsonSchema", "jsonschema"),
+    ]:
+        code = f"""
+import time
+t0 = time.perf_counter()
+import {module}
+print((time.perf_counter() - t0) * 1000)
+"""
+        r = subprocess.run(["python", "-c", code], capture_output=True, text=True)
+        try:
+            t = float(r.stdout.strip())
+            print(f"  {label:12s} ~{t:.0f} ms")
+        except ValueError:
+            print(f"  {label:12s} N/A")
+
+
 # --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
@@ -190,3 +235,5 @@ if __name__ == "__main__":
     bench_validate_dict()
     bench_validate_instance()
     bench_construct()
+    bench_dependency_sizes()
+    bench_cold_import()
